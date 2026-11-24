@@ -1,0 +1,2413 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>ZEN — Organizador Jurídico Profissional</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  :root {
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --surface-subtle: #f1f5f9;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --text-muted: #64748b;
+    --primary: #1e3a8a;
+    --primary-hover: #1e40af;
+    --primary-light: #eff6ff;
+    --accent: #2563eb;
+    --danger: #dc2626;
+    --danger-bg: #fef2f2;
+    --success: #16a34a;
+    --success-bg: #f0fdf4;
+    --warning: #d97706;
+    --warning-bg: #fffbeb;
+    --radius: 8px;
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+    --transition: all 0.2s ease;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    font-size: 13.5px;
+    line-height: 1.4;
+  }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Header */
+  header {
+    background-color: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .brand-logo {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .brand-logo svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .brand-text-title {
+    font-weight: 800;
+    font-size: 1.05rem;
+    letter-spacing: -0.3px;
+    color: var(--text);
+  }
+
+  .brand-text-subtitle {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  /* Layout */
+  .app-layout {
+    width: 100%;
+    padding: 16px;
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  @media(max-width: 900px) {
+    .app-layout { grid-template-columns: 1fr; padding: 10px; }
+    .sidebar { display: flex; overflow-x: auto; padding-bottom: 6px; }
+  }
+
+  /* Sidebar */
+  .sidebar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px;
+    height: fit-content;
+    box-shadow: var(--shadow);
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: var(--transition);
+    white-space: nowrap;
+    margin-bottom: 2px;
+  }
+
+  .nav-item svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+    flex-shrink: 0;
+  }
+
+  .nav-item:hover {
+    background-color: var(--surface-subtle);
+    color: var(--text);
+  }
+
+  .nav-item.active {
+    background-color: var(--primary-light);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  main {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow);
+    margin-bottom: 16px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  h2 {
+    margin: 0 0 14px 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+  }
+
+  /* Form */
+  form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+  }
+
+  input, select, textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    background-color: var(--bg);
+    color: var(--text);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    transition: var(--transition);
+  }
+
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--primary-light);
+  }
+
+  input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .label-text {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+    display: block;
+  }
+
+  /* Buttons */
+  .btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    font-weight: 600;
+    font-size: 0.82rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    transition: var(--transition);
+    white-space: nowrap;
+  }
+
+  .btn svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
+  .btn-primary { background-color: var(--accent); color: #fff; }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-ghost { background-color: transparent; border-color: var(--border); color: var(--text); }
+  .btn-ghost:hover { background-color: var(--surface-subtle); }
+  .btn-danger { background-color: var(--danger-bg); color: var(--danger); border-color: transparent; }
+  .btn-danger:hover { background-color: var(--danger); color: #fff; }
+
+  /* Clickable Copy Styling */
+  .clickable-copy {
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .clickable-copy:hover {
+    opacity: 0.75;
+    background-color: var(--primary-light);
+    border-radius: 3px;
+    padding: 1px 3px;
+    color: var(--accent);
+  }
+
+  /* Toast Notification */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--text);
+    color: var(--surface);
+    padding: 10px 18px;
+    border-radius: var(--radius);
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 10000;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s ease;
+    pointer-events: none;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Tabela Responsiva Sem Corte */
+  .table-container {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    margin-top: 10px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    min-width: 820px;
+  }
+
+  th, td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  th {
+    background-color: var(--surface-subtle);
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background-color: var(--surface-subtle); }
+
+  .col-cliente { min-width: 160px; max-width: 220px; }
+  .col-processo { min-width: 160px; font-family: monospace; font-size: 0.8rem; word-break: break-all; }
+  .col-tribunal { min-width: 80px; text-align: center; }
+  .col-peca { min-width: 130px; }
+  .col-prio { min-width: 90px; text-align: center; }
+  .col-prazo { min-width: 100px; text-align: center; }
+  .col-status { min-width: 110px; text-align: center; }
+  .col-acoes { min-width: 215px; width: 215px; text-align: right; white-space: nowrap; }
+
+  .actions-wrapper {
+    display: flex;
+    gap: 4px;
+    justify-content: flex-end;
+    align-items: center;
+  }
+
+  /* Badges */
+  .badge {
+    display: inline-flex;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.7rem;
+    letter-spacing: 0.2px;
+    align-items: center;
+    justify-content: center;
+  }
+  .badge-pendente { background: var(--primary-light); color: var(--accent); }
+  .badge-concluido { background: var(--success-bg); color: var(--success); }
+  .badge-atraso { background: var(--danger-bg); color: var(--danger); }
+  .badge-sem-prazo { background: var(--surface-subtle); color: var(--text-muted); }
+
+  .badge-prio-urgente { background: var(--danger-bg); color: var(--danger); font-weight: 700; border: 1px solid var(--danger); }
+  .badge-prio-normal { background: var(--primary-light); color: var(--accent); }
+  .badge-prio-sem-pressa { background: var(--surface-subtle); color: var(--text-muted); }
+
+  /* Document Status Badges */
+  .badge-doc-nao { background: var(--danger-bg); color: var(--danger); font-weight: 700; }
+  .badge-doc-solicitado { background: var(--warning-bg); color: var(--warning); font-weight: 700; }
+  .badge-doc-recebido { background: var(--primary-light); color: var(--accent); font-weight: 700; }
+
+  /* Calendar */
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+  .calendar-header {
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    padding: 6px;
+    background: var(--surface-subtle);
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+  .calendar-day {
+    min-height: 80px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px;
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 0.75rem;
+    overflow: hidden;
+  }
+  .calendar-day-num { font-weight: 700; margin-bottom: 2px; }
+
+  .controls-bar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  .hidden { display: none !important; }
+  footer { text-align: center; color: var(--text-muted); padding: 20px 0; font-size: 0.8rem; border-top: 1px solid var(--border); margin-top: 24px; }
+
+  /* Impressão Limpa e Otimizada */
+  @media print {
+    header, .sidebar, .controls-bar, button, form, footer, .toast, #report-form { 
+      display: none !important; 
+    }
+    .app-layout { 
+      display: block !important; 
+      padding: 0 !important; 
+    }
+    main { 
+      width: 100% !important; 
+    }
+    .card { 
+      border: none !important; 
+      box-shadow: none !important; 
+      padding: 0 !important; 
+      margin: 0 !important; 
+    }
+    body { 
+      background: #fff !important; 
+      color: #000 !important; 
+    }
+    .table-container { 
+      border: none !important; 
+      overflow: visible !important; 
+    }
+    section.card.hidden {
+      display: none !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <!-- Toast Notification Container -->
+  <div id="toast" class="toast"></div>
+
+  <header>
+    <div class="brand">
+      <div class="brand-logo">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="100" height="100" rx="22" fill="url(#zen_grad)"/>
+          <path d="M50 22V78" stroke="white" stroke-width="6" stroke-linecap="round"/>
+          <path d="M26 38H74" stroke="white" stroke-width="5" stroke-linecap="round"/>
+          <path d="M26 38L16 58M26 38L36 58" stroke="white" stroke-width="4" stroke-linecap="round"/>
+          <path d="M12 58H40" stroke="white" stroke-width="5" stroke-linecap="round"/>
+          <path d="M74 38L64 58M74 38L84 58" stroke="white" stroke-width="4" stroke-linecap="round"/>
+          <path d="M60 58H88" stroke="white" stroke-width="5" stroke-linecap="round"/>
+          <path d="M35 78H65" stroke="white" stroke-width="6" stroke-linecap="round"/>
+          <circle cx="50" cy="50" r="40" stroke="white" stroke-width="3" stroke-dasharray="180 70" opacity="0.4" transform="rotate(-45 50 50)"/>
+          <defs>
+            <linearGradient id="zen_grad" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#2563EB"/>
+              <stop offset="1" stop-color="#1E3A8A"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-text-title">ZEN JURÍDICO</div>
+        <div class="brand-text-subtitle">Organizador Profissional de Prazos</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-ghost" id="notif-btn" onclick="requestNotificationPermission()" title="Ativar Notificações Nativas do Navegador" style="font-size: 0.8rem; padding: 5px 10px;">
+        🔔 <span id="notif-btn-text">Ativar Alertas</span>
+      </button>
+      <select id="theme-selector" onchange="changeThemePalette(this.value)" style="padding: 5px 10px; font-size: 0.8rem; width: auto;">
+        <option value="corporate_blue">🔵 Azul Corporativo</option>
+        <option value="midnight_dark">🌙 Midnight Dark</option>
+        <option value="emerald_law">🌿 Emerald Law</option>
+        <option value="slate_minimal">🏛️ Slate Minimal</option>
+        <option value="soft_blue">🧊 Azul Suave (Fundo Azulado)</option>
+        <option value="rose_elegance">🌸 Rosa Elegance (Fundo Rosé)</option>
+        <option value="sunset_warm">☀️ Sunset Warm (Fundo Areia/Dourado)</option>
+      </select>
+    </div>
+  </header>
+
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="nav-item active" data-target="home" onclick="navigate(event, 'home')">
+        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        <span>Início</span>
+      </div>
+      <div class="nav-item" data-target="list" onclick="navigate(event, 'list')">
+        <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="2"></rect><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="16" x2="13" y2="16"></line></svg>
+        <span>Tarefas e Prazos</span>
+      </div>
+      <div class="nav-item" data-target="add" onclick="navigate(event, 'add')">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+        <span>Novo Prazo</span>
+      </div>
+      <div class="nav-item" data-target="finalizadas" onclick="navigate(event, 'finalizadas')">
+        <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        <span>Cumpridas</span>
+      </div>
+      <div class="nav-item" data-target="documents" onclick="navigate(event, 'documents')">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        <span>Documentos Solicitados</span>
+      </div>
+      <div class="nav-item" data-target="reminders" onclick="navigate(event, 'reminders')">
+        <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+        <span>Lembretes</span>
+      </div>
+      <div class="nav-item" data-target="calendar" onclick="navigate(event, 'calendar')">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        <span>Agenda Mensal</span>
+      </div>
+      <div class="nav-item" data-target="reports" onclick="navigate(event, 'reports')">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        <span>Relatórios</span>
+      </div>
+      <div class="nav-item" data-target="export" onclick="navigate(event, 'export')">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        <span>Backup & Dados</span>
+      </div>
+      <div style="border-top: 1px solid var(--border); margin: 8px 0;"></div>
+      <div class="nav-item" data-target="about" onclick="navigate(event, 'about')">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        <span>Sobre</span>
+      </div>
+      <div class="nav-item" data-target="terms" onclick="navigate(event, 'terms')">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        <span>Termos</span>
+      </div>
+    </aside>
+
+    <main>
+      <!-- INÍCIO -->
+      <section id="home" class="card">
+        <h2>Visão Geral <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);">Painel de controle executivo</span></h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+          <div>
+            <div class="card" style="margin-bottom: 12px; padding: 14px; border-left: 4px solid var(--danger); background: var(--surface);">
+              <h3 style="margin: 0 0 8px 0; font-size: 0.9rem; font-weight: 700; color: var(--danger); display: flex; align-items: center; justify-content: space-between;">
+                Urgentes Pendentes
+                <span id="count-urgent-badge" class="badge badge-prio-urgente">0</span>
+              </h3>
+              <ul id="urgent-list" style="list-style: none; padding: 0; margin: 0;"></ul>
+              <div id="urgent-controls" style="margin-top: 8px;"></div>
+            </div>
+
+            <div class="card" style="margin-bottom: 12px; padding: 14px;">
+              <h3 style="margin: 0 0 10px 0; font-size: 0.9rem; font-weight: 600;">Próximos Prazos Vencendo</h3>
+              <ul id="upcoming-list" style="list-style: none; padding: 0; margin: 0;"></ul>
+              <div id="upcoming-controls" style="margin-top: 8px;"></div>
+            </div>
+          </div>
+
+          <div>
+            <!-- Lembretes Ativos (Movido para cima conforme solicitado) -->
+            <div class="card" style="margin-bottom: 12px; padding: 14px; border-left: 4px solid var(--warning);">
+              <h3 style="margin: 0 0 8px 0; font-size: 0.9rem; font-weight: 700; color: var(--warning); display: flex; align-items: center; justify-content: space-between;">
+                Lembretes Ativos
+                <span id="count-reminder-badge" class="badge" style="background: var(--warning-bg); color: var(--warning);">0</span>
+              </h3>
+              <ul id="home-reminder-list" style="list-style: none; padding: 0; margin: 0;"></ul>
+            </div>
+
+            <!-- Contadores do Sistema (Movido para baixo) -->
+            <div class="card" style="margin-bottom: 12px; padding: 14px;">
+              <h3 style="margin: 0 0 10px 0; font-size: 0.9rem; font-weight: 600;">Contadores do Sistema</h3>
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center;">
+                <div style="background: var(--surface-subtle); padding: 8px; border-radius: 6px;">
+                  <span class="label-text">Abertos</span>
+                  <strong id="count-open" style="font-size: 1.1rem;">0</strong>
+                </div>
+                <div style="background: var(--surface-subtle); padding: 8px; border-radius: 6px;">
+                  <span class="label-text">Cumpridos</span>
+                  <strong id="count-done" style="font-size: 1.1rem; color: var(--success);">0</strong>
+                </div>
+                <div style="background: var(--surface-subtle); padding: 8px; border-radius: 6px;">
+                  <span class="label-text">Atraso</span>
+                  <strong id="count-overdue" style="font-size: 1.1rem; color: var(--danger);">0</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="card" style="padding: 14px;">
+              <h3 style="margin: 0 0 10px 0; font-size: 0.9rem; font-weight: 600;">Pendências por Tipo de Peça</h3>
+              <div id="breakdown-pending" style="display: flex; flex-direction: column; gap: 5px;"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- LISTA DE TAREFAS -->
+      <section id="list" class="card hidden">
+        <h2>
+          Controle de Prazos Processuais
+          <button class="btn btn-ghost" onclick="window.print()">
+            <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            Imprimir Relatório
+          </button>
+        </h2>
+        <div class="controls-bar">
+          <input id="search-input" type="search" placeholder="🔍 Buscar cliente, processo, tribunal, tipo..." style="flex: 2; min-width: 180px;" />
+          <select id="filter-select" onchange="setFilter(this.value)" style="flex: 1; min-width: 120px;">
+            <option value="todos">Pendentes e Atrasados</option>
+            <option value="pendentes">Apenas Pendentes (no prazo)</option>
+            <option value="atrasado">Apenas em Atraso</option>
+          </select>
+          <select id="filter-tribunal" onchange="setTribunalFilter(this.value)" style="flex: 1; min-width: 120px;">
+            <option value="todos">Todos os tribunais</option>
+          </select>
+          <select id="filter-prioridade" onchange="setPrioridadeFilter(this.value)" style="flex: 1; min-width: 120px;">
+            <option value="todos">Todas prioridades</option>
+            <option value="urgente">Apenas Urgentes</option>
+            <option value="normal">Apenas Normal</option>
+            <option value="sem_pressa">Apenas Sem Pressa</option>
+          </select>
+        </div>
+        
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th class="col-cliente">Cliente</th>
+                <th class="col-processo">Processo</th>
+                <th class="col-tribunal">Tribunal</th>
+                <th class="col-peca">Peça / Ato</th>
+                <th class="col-prio">Prioridade</th>
+                <th class="col-prazo">Prazo Final</th>
+                <th class="col-status">Status</th>
+                <th class="col-acoes">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="task-table-body"></tbody>
+          </table>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; flex-wrap: wrap; gap: 8px;">
+          <div id="pagination-controls" style="display: flex; gap: 4px;"></div>
+          <div>
+            <span class="label-text" style="display: inline; margin-right: 6px;">Itens por página:</span>
+            <select id="page-size-select" style="width: auto; display: inline-block;" onchange="changePageSize(this.value)">
+              <option value="25">25</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- PÁGINA / DETALHES DA TAREFA -->
+      <section id="task-detail" class="card hidden">
+        <h2>
+          <span>Detalhes do Processo / Prazo</span>
+          <button class="btn btn-ghost" onclick="navigate(null, 'list')">← Voltar à Lista</button>
+        </h2>
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; background: var(--surface-subtle); padding: 14px; border-radius: 6px;">
+            <div>
+              <span class="label-text">Cliente / Parte</span>
+              <strong id="det-cliente" class="clickable-copy" style="font-size: 1rem; color: var(--accent);" title="Clique para copiar"></strong>
+            </div>
+            <div>
+              <span class="label-text">Telefone</span>
+              <span id="det-telefone" style="font-weight: 600;"></span>
+            </div>
+            <div>
+              <span class="label-text">Número do Processo</span>
+              <strong id="det-processo" class="clickable-copy" style="font-size: 1rem; font-family: monospace;" title="Clique para copiar"></strong>
+            </div>
+            <div>
+              <span class="label-text">Tribunal / Sistema</span>
+              <span id="det-tribunal" style="font-weight: 600;"></span>
+            </div>
+            <div>
+              <span class="label-text">Tipo de Peça / Ato</span>
+              <span id="det-peca" style="font-weight: 600;"></span>
+            </div>
+            <div>
+              <span class="label-text">Urgência / Prioridade</span>
+              <div id="det-prioridade" style="margin-top: 2px;"></div>
+            </div>
+            <div>
+              <span class="label-text">Status Atual</span>
+              <div id="det-status" style="margin-top: 2px;"></div>
+            </div>
+            <div>
+              <span class="label-text">Data Final do Prazo</span>
+              <strong id="det-prazo" style="font-size: 0.95rem;"></strong>
+            </div>
+            <div>
+              <span class="label-text">Status Documentos</span>
+              <div id="det-doc-status" style="margin-top: 2px;"></div>
+            </div>
+          </div>
+
+          <div>
+            <span class="label-text">Observações e Histórico</span>
+            <div id="det-observacoes" style="background: var(--bg); border: 1px solid var(--border); padding: 12px; border-radius: 6px; min-height: 80px; white-space: pre-wrap; font-size: 0.9rem;"></div>
+          </div>
+
+          <div style="display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid var(--border); padding-top: 12px;" id="det-actions">
+            <!-- Botões injetados via JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ADICIONAR / EDITAR -->
+      <section id="add" class="card hidden">
+        <h2 id="form-title">Cadastrar Novo Prazo Processual</h2>
+        <form id="task-form">
+          <input type="hidden" id="task-id" />
+          <div>
+            <label class="label-text">Cliente / Parte *</label>
+            <input id="cliente" type="text" required placeholder="Nome do cliente" />
+          </div>
+          <div>
+            <label class="label-text">Telefone (Contato)</label>
+            <input id="telefone" type="text" placeholder="Ex: (51) 99999-9999" />
+          </div>
+          <div>
+            <label class="label-text">Número do Processo</label>
+            <input id="processo" type="text" placeholder="Ex: 5001234-56.2026.8.21.0001" />
+          </div>
+          <div>
+            <label class="label-text">Tribunal / Sistema</label>
+            <input id="tribunal" type="text" placeholder="Ex: TJRS, TRT4, Eproc, PJe" />
+          </div>
+          <div>
+            <label class="label-text">Tipo de Peça *</label>
+            <div style="display: flex; gap: 4px;">
+              <select id="tipo-peca" required style="flex: 1;"></select>
+              <button type="button" class="btn btn-ghost" onclick="addNewPieceType()" title="Adicionar novo tipo">+</button>
+            </div>
+          </div>
+          
+          <div>
+            <label class="label-text">Data Final do Prazo</label>
+            <input id="prazo" type="date" />
+            <div style="margin-top: 4px; display: flex; align-items: center; gap: 6px;">
+              <input type="checkbox" id="sem-prazo" style="width: auto; cursor: pointer;" onchange="toggleSemPrazo(this.checked)" />
+              <label for="sem-prazo" style="font-size: 0.78rem; color: var(--text-muted); cursor: pointer;">Prazo ainda não aberto / Sem data final</label>
+            </div>
+          </div>
+
+          <div>
+            <label class="label-text">Urgência / Prioridade *</label>
+            <select id="prioridade" required>
+              <option value="normal" selected>Normal</option>
+              <option value="urgente">Urgente</option>
+              <option value="sem_pressa">Sem Pressa</option>
+            </select>
+          </div>
+
+          <div style="grid-column: 1 / -1; background: var(--surface-subtle); padding: 12px; border-radius: 6px; border: 1px solid var(--border);">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <input type="checkbox" id="pedir-documentos" style="width: auto; cursor: pointer;" />
+              <label for="pedir-documentos" style="font-weight: 600; cursor: pointer; font-size: 0.9rem;">Pedir Documentos</label>
+            </div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">
+              Marque se este processo requer solicitação de documentos ao cliente. Por padrão ficará como "Não solicitado".
+            </div>
+          </div>
+
+          <div style="grid-column: 1 / -1;">
+            <label class="label-text">Observações e Histórico</label>
+            <textarea id="observacoes" rows="3" placeholder="Detalhes da intimação, contagem, observações da parte..."></textarea>
+          </div>
+          <div style="grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+            <button type="button" class="btn btn-ghost" onclick="resetTaskForm(); navigate(null, 'list');">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Salvar Prazo</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- DOCUMENTOS SOLICITADOS -->
+      <section id="documents" class="card hidden">
+        <h2>Documentos Solicitados <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);">Controle de pendências documentais</span></h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;">
+          Tarefas pendentes e atrasadas que possuem marcação para solicitação de documentos.
+        </p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th class="col-cliente">Cliente</th>
+                <th class="col-processo">Processo</th>
+                <th class="col-tribunal">Tribunal</th>
+                <th style="min-width: 110px;">Telefone</th>
+                <th class="col-prazo">Prazo Final</th>
+                <th style="min-width: 140px; text-align: center;">Status Documento</th>
+                <th style="min-width: 150px; text-align: right;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="documents-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAREFAS FINALIZADAS -->
+      <section id="finalizadas" class="card hidden">
+        <h2>Prazos Cumpridos <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);">Histórico de entregas e protocolos</span></h2>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th class="col-cliente">Cliente</th>
+                <th class="col-processo">Processo</th>
+                <th class="col-tribunal">Tribunal</th>
+                <th class="col-peca">Peça</th>
+                <th class="col-prio">Prioridade</th>
+                <th class="col-prazo">Prazo Original</th>
+                <th class="col-prazo">Cumprido em</th>
+                <th class="col-acoes" style="text-align: right;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="completed-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- LEMBRETES -->
+      <section id="reminders" class="card hidden">
+        <h2>
+          Lembretes e Diligências
+          <button class="btn btn-primary" onclick="openReminderModal()">+ Novo Lembrete</button>
+        </h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;">
+          Anote ligações, diligências e tarefas que não exigem peticionamento direto, mas são essenciais para o andamento profissional.
+        </p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th style="min-width: 140px;">Título / Ação</th>
+                <th style="min-width: 140px;">Cliente</th>
+                <th style="min-width: 140px;">Processo / Tribunal</th>
+                <th style="min-width: 90px; text-align: center;">Data Alvo</th>
+                <th style="min-width: 90px; text-align: center;">Status</th>
+                <th style="min-width: 150px; text-align: right;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="reminder-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- CALENDAR -->
+      <section id="calendar" class="card hidden">
+        <h2>
+          Agenda de Prazos e Lembretes
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <button class="btn btn-ghost" onclick="changeMonth(-1)">◀ Anterior</button>
+            <span id="cal-month-title" style="font-weight: 600; min-width: 130px; text-align: center;"></span>
+            <button class="btn btn-ghost" onclick="changeMonth(1)">Próximo ▶</button>
+          </div>
+        </h2>
+        <div class="calendar-grid" style="margin-bottom: 6px;">
+          <div class="calendar-header">Domingo</div>
+          <div class="calendar-header">Segunda</div>
+          <div class="calendar-header">Terça</div>
+          <div class="calendar-header">Quarta</div>
+          <div class="calendar-header">Quinta</div>
+          <div class="calendar-header">Sexta</div>
+          <div class="calendar-header">Sábado</div>
+        </div>
+        <div id="calendar-grid" class="calendar-grid"></div>
+      </section>
+
+      <!-- RELATÓRIOS DETALHADOS -->
+      <section id="reports" class="card hidden">
+        <h2>
+          Central de Relatórios Detalhados
+          <button class="btn btn-ghost" onclick="printReport()">
+            <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            Imprimir Relatório
+          </button>
+        </h2>
+        <div id="report-form" style="background: var(--surface-subtle); padding: 14px; border-radius: 6px; margin-bottom: 16px;">
+          <form style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; align-items: end;" onsubmit="generateReport(event)">
+            <div>
+              <label class="label-text">Tipo de Registro</label>
+              <select id="rep-tipo-reg">
+                <option value="prazos">Prazos Processuais</option>
+                <option value="lembretes">Lembretes</option>
+              </select>
+            </div>
+            <div>
+              <label class="label-text">Status</label>
+              <select id="rep-status">
+                <option value="todos">Todos</option>
+                <option value="pendente">Apenas Pendentes / Abertos</option>
+                <option value="atrasado">Apenas Atrasados</option>
+                <option value="concluido">Apenas Cumpridos / Concluídos</option>
+              </select>
+            </div>
+            <div>
+              <label class="label-text">Tipo de Peça (Prazos)</label>
+              <select id="rep-peca">
+                <option value="todas">Todas as Peças</option>
+              </select>
+            </div>
+            <div>
+              <label class="label-text">Ordenar Por</label>
+              <select id="rep-ordem">
+                <option value="vencimento">Data de Vencimento / Alvo</option>
+                <option value="cumprimento">Data de Cumprimento</option>
+                <option value="cliente">Nome do Cliente</option>
+              </select>
+            </div>
+            <div>
+              <label class="label-text">Data Inicial (Opcional)</label>
+              <input type="date" id="rep-data-ini" />
+            </div>
+            <div>
+              <label class="label-text">Data Final (Opcional)</label>
+              <input type="date" id="rep-data-fim" />
+            </div>
+            <div style="grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px;">
+              <button type="submit" class="btn btn-primary">Gerar Relatório</button>
+            </div>
+          </form>
+        </div>
+
+        <div id="report-results-container">
+          <div style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 20px;">
+            Configure os filtros acima e clique em "Gerar Relatório".
+          </div>
+        </div>
+      </section>
+
+      <!-- EXPORT / IMPORT -->
+      <section id="export" class="card hidden">
+        <h2>Backup, Exportação e Importação de Dados</h2>
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="btn btn-primary" onclick="exportJSON()">📥 Baixar Backup Completo (.json)</button>
+            <button class="btn btn-ghost" onclick="exportCompletedJSON()">📥 Baixar Apenas Cumpridas (.json)</button>
+          </div>
+          <hr style="border: 0; border-top: 1px solid var(--border);" />
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <input id="file-import" type="file" accept="application/json" style="flex: 1; min-width: 240px;" />
+            <button class="btn btn-primary" onclick="importJSON()">📤 Importar e Mesclar</button>
+          </div>
+          <div id="import-status" style="font-size: 0.82rem; color: var(--text-muted);"></div>
+          <hr style="border: 0; border-top: 1px solid var(--border);" />
+          <div>
+            <button class="btn btn-danger" onclick="clearAllData()">⚠️ Apagar Todos os Dados do Navegador</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SOBRE -->
+      <section id="about" class="card hidden">
+        <h2>Sobre o ZEN Jurídico</h2>
+        <p><strong>ZEN — Organizador Jurídico</strong> é uma ferramenta desenvolvida para o controle de prazos processuais, intimações e diligências.</p>
+        <p>Desenvolvido por <strong>Tiago da Silva</strong>. Os dados são armazenados exclusivamente de forma local no seu navegador (localStorage), garantindo segurança e sigilo profissional.</p>
+      </section>
+
+      <!-- TERMOS -->
+      <section id="terms" class="card hidden">
+        <h2>Termos de Uso e Responsabilidade</h2>
+        <div style="max-height: 250px; overflow-y: auto; padding-right: 8px; color: var(--text-muted);">
+          <p>O aplicativo ZEN é fornecido como ferramenta de auxílio gerencial e operacional para controle de prazos. O advogado permanece como único responsável pelo controle tempestivo e cumprimento dos atos processuais.</p>
+          <p>Nenhuma informação é transmitida para servidores externos. Todos os registros permanecem no armazenamento local do dispositivo.</p>
+        </div>
+        <div style="margin-top: 14px;">
+          <button class="btn btn-primary" onclick="acceptTerms()">Concordar e Acessar</button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL DE LEMBRETE -->
+  <div id="reminder-modal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px;">
+    <div class="card" style="max-width: 500px; width: 100%; margin: 0; background: var(--surface);">
+      <h2 id="reminder-modal-title">Novo Lembrete / Diligência</h2>
+      <form id="reminder-form" onsubmit="handleReminderSubmit(event)">
+        <input type="hidden" id="rem-id" />
+        <div>
+          <label class="label-text">Título / Ação *</label>
+          <input id="rem-titulo" type="text" required placeholder="Ex: Ligar para a 2ª Vara Cível e cobrar conclusão" />
+        </div>
+        <div>
+          <label class="label-text">Cliente (Opcional)</label>
+          <input id="rem-cliente" type="text" placeholder="Nome do cliente" />
+        </div>
+        <div>
+          <label class="label-text">Processo / Tribunal (Opcional)</label>
+          <input id="rem-processo" type="text" placeholder="Ex: 5001234-56.2026.8.21.0001 (TJRS)" />
+        </div>
+        <div>
+          <label class="label-text">Data Alvo</label>
+          <input id="rem-data" type="date" />
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <label class="label-text">Detalhes / Anotações</label>
+          <textarea id="rem-obs" rows="3" placeholder="Informações adicionais..."></textarea>
+        </div>
+        <div style="grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">          <button type="button" class="btn btn-ghost" onclick="closeReminderModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Lembrete</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <footer>
+    ZEN Organizador Jurídico — Desenvolvido por Tiago da Silva — Todos os direitos reservados.
+  </footer>
+
+<script>
+const STORAGE_KEYS = {
+  TASKS: "zen_pro_tasks_v5",
+  TIPOS: "zen_pro_types_v5",
+  REMINDERS: "zen_pro_reminders_v2",
+  THEME: "zen_pro_theme_v6",
+  TERMS: "zen_pro_terms_v4"
+};
+
+const STATUS = { PENDENTE: "PENDENTE", CONCLUIDO: "CONCLUIDO" };
+const DOC_STATUS = { NAO_SOLICITADO: "nao_solicitado", SOLICITADO: "solicitado", RECEBIDO: "recebido" };
+
+const colorPalettes = {
+  corporate_blue: {
+    bg: "#f8fafc", surface: "#ffffff", surfaceSubtle: "#f1f5f9", border: "#e2e8f0",
+    text: "#0f172a", textMuted: "#64748b", accent: "#2563eb", primaryLight: "#eff6ff"
+  },
+  midnight_dark: {
+    bg: "#0b0f19", surface: "#111827", surfaceSubtle: "#1f2937", border: "#374151",
+    text: "#f3f4f6", textMuted: "#9ca3af", accent: "#3b82f6", primaryLight: "#1e3a8a33"
+  },
+  emerald_law: {
+    bg: "#f4fbf7", surface: "#ffffff", surfaceSubtle: "#ecfdf5", border: "#a7f3d0",
+    text: "#064e3b", textMuted: "#047857", accent: "#059669", primaryLight: "#d1fae5"
+  },
+  slate_minimal: {
+    bg: "#fafaf9", surface: "#ffffff", surfaceSubtle: "#f5f5f4", border: "#e7e5e4",
+    text: "#1c1917", textMuted: "#78716c", accent: "#57534e", primaryLight: "#e7e5e4"
+  },
+  soft_blue: {
+    bg: "#eef4ff", surface: "#ffffff", surfaceSubtle: "#e0e7ff", border: "#c7d2fe",
+    text: "#1e1b4b", textMuted: "#4338ca", accent: "#4f46e5", primaryLight: "#e0e7ff"
+  },
+  rose_elegance: {
+    bg: "#fff1f2", surface: "#ffffff", surfaceSubtle: "#ffe4e6", border: "#fecdd3",
+    text: "#4c0519", textMuted: "#9f1239", accent: "#e11d48", primaryLight: "#ffe4e6"
+  },
+  sunset_warm: {
+    bg: "#fffbeb", surface: "#ffffff", surfaceSubtle: "#fef3c7", border: "#fde68a",
+    text: "#78350f", textMuted: "#b45309", accent: "#d97706", primaryLight: "#fef3c7"
+  }
+};
+
+let tasks = [];
+let reminders = [];
+let pieceTypes = [];
+const defaultTypes = [
+  "Apelação", "Contrarrazões", "Agravo de Instrumento", "Embargos de Declaração",
+  "Petição Inicial", "Emenda à Inicial", "Réplica", "Contestação",
+  "Manifestação sobre Cálculos", "Recurso Ordinário", "Contrarrazões de Recurso Ordinário"
+];
+
+let state = {
+  currentFilter: "todos",
+  currentTribunal: "todos",
+  currentPrioridade: "todos",
+  currentSearch: "",
+  pageSize: 50,
+  currentPage: 1,
+  upcomingExpanded: false,
+  urgentExpanded: false,
+  calendarDate: new Date()
+};
+
+/* Utilities */
+const pad = n => String(n).padStart(2, "0");
+
+function formatDateToBR(iso) {
+  if (!iso || iso === "SEM_PRAZO") return "Sem prazo";
+  const [y, m, d] = iso.split("-");
+  if (y && m && d) return `${d}/${m}/${y}`;
+  const dt = new Date(iso);
+  return isNaN(dt) ? iso : `${pad(dt.getDate())}/${pad(dt.getMonth()+1)}/${dt.getFullYear()}`;
+}
+
+function formatDateTimeToBR(isoStr) {
+  if (!isoStr) return "-";
+  const dt = new Date(isoStr);
+  if (isNaN(dt)) return isoStr;
+  return `${pad(dt.getDate())}/${pad(dt.getMonth()+1)}/${dt.getFullYear()} às ${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+}
+
+function parseDateLocal(iso) {
+  if (!iso || iso === "SEM_PRAZO") return null;
+  const [y, m, d] = iso.split("-").map(Number);
+  if (y && m && d) return new Date(y, m - 1, d);
+  const dt = new Date(iso);
+  return isNaN(dt) ? null : dt;
+}
+
+function startOfDay(d) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function daysBetween(a, b) {
+  const ms = 24 * 60 * 60 * 1000;
+  return Math.round((startOfDay(b) - startOfDay(a)) / ms);
+}
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/* Toast & Click to Copy Helper */
+function showToast(message) {
+  let toast = document.getElementById("toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "toast";
+    toast.className = "toast";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.classList.add("show");
+  setTimeout(() => {
+    toast.classList.remove("show");
+  }, 2200);
+}
+
+document.addEventListener('click', function(e) {
+  const target = e.target.closest('.clickable-copy');
+  if (target) {
+    e.stopPropagation();
+    const text = target.getAttribute('data-text');
+    const label = target.getAttribute('data-label');
+    if (text && text !== '-') {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(`${label} copiado: ${text}`);
+      }).catch(err => {
+        console.error("Erro ao copiar:", err);
+      });
+    }
+  }
+});
+
+/* Storage & Theme */
+function loadStorage() {
+  try {
+    tasks = JSON.parse(localStorage.getItem(STORAGE_KEYS.TASKS)) || [];
+    reminders = JSON.parse(localStorage.getItem(STORAGE_KEYS.REMINDERS)) || [];
+    pieceTypes = JSON.parse(localStorage.getItem(STORAGE_KEYS.TIPOS)) || defaultTypes.slice();
+    const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME) || "corporate_blue";
+    const sel = document.getElementById("theme-selector");
+    if (sel) sel.value = savedTheme;
+    applyThemePalette(savedTheme);
+  } catch (e) {
+    tasks = [];
+    reminders = [];
+    pieceTypes = defaultTypes.slice();
+  }
+}
+
+function saveStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
+    localStorage.setItem(STORAGE_KEYS.REMINDERS, JSON.stringify(reminders));
+    localStorage.setItem(STORAGE_KEYS.TIPOS, JSON.stringify(pieceTypes));
+  } catch (e) {
+    console.error("Erro ao salvar storage:", e);
+  }
+}
+
+function applyThemePalette(themeKey) {
+  const pal = colorPalettes[themeKey] || colorPalettes.corporate_blue;
+  const root = document.documentElement;
+  root.style.setProperty("--bg", pal.bg);
+  root.style.setProperty("--surface", pal.surface);
+  root.style.setProperty("--surface-subtle", pal.surfaceSubtle);
+  root.style.setProperty("--border", pal.border);
+  root.style.setProperty("--text", pal.text);
+  root.style.setProperty("--text-muted", pal.textMuted);
+  root.style.setProperty("--accent", pal.accent);
+  root.style.setProperty("--primary-light", pal.primaryLight);
+  localStorage.setItem(STORAGE_KEYS.THEME, themeKey);
+}
+
+function changeThemePalette(key) {
+  applyThemePalette(key);
+}
+
+/* Web Notifications */
+function updateNotificationButtonUI() {
+  const btn = document.getElementById("notif-btn");
+  const btnText = document.getElementById("notif-btn-text");
+  if (!btn || !("Notification" in window)) return;
+  
+  if (Notification.permission === "granted") {
+    btnText.textContent = "Alertas Ativos";
+    btn.style.borderColor = "var(--success)";
+    btn.style.color = "var(--success)";
+  } else if (Notification.permission === "denied") {
+    btnText.textContent = "Alertas Bloqueados";
+    btn.style.borderColor = "var(--danger)";
+    btn.style.color = "var(--danger)";
+  } else {
+    btnText.textContent = "Ativar Alertas";
+  }
+}
+
+function requestNotificationPermission() {
+  if (!("Notification" in window)) {
+    alert("Este navegador não suporta notificações nativas.");
+    return;
+  }
+  Notification.requestPermission().then(permission => {
+    updateNotificationButtonUI();
+    if (permission === "granted") {
+      new Notification("ZEN Jurídico", {
+        body: "Notificações ativadas! Você será alertado sobre prazos e lembretes."
+      });
+    } else {
+      alert("Permissão de notificação negada pelo navegador.");
+    }
+  });
+}
+
+/* UI Controls */
+function renderPieceTypeOptions() {
+  const sel = document.getElementById("tipo-peca");
+  if (!sel) return;
+  const currentVal = sel.value;
+  sel.innerHTML = '<option value="" disabled selected>— Selecione o tipo —</option>';
+  pieceTypes.forEach(t => {
+    const opt = document.createElement("option");
+    opt.value = t;
+    opt.textContent = t;
+    sel.appendChild(opt);
+  });
+  if (pieceTypes.includes(currentVal)) sel.value = currentVal;
+
+  const repSel = document.getElementById("rep-peca");
+  if (repSel) {
+    const currRep = repSel.value;
+    repSel.innerHTML = '<option value="todas">Todas as Peças</option>';
+    pieceTypes.forEach(t => {
+      const opt = document.createElement("option");
+      opt.value = t;
+      opt.textContent = t;
+      repSel.appendChild(opt);
+    });
+    repSel.value = currRep;
+  }
+}
+
+function updateTribunalFilterOptions() {
+  const sel = document.getElementById("filter-tribunal");
+  if (!sel) return;
+  const currentVal = sel.value;
+  const tribunais = [...new Set(tasks.map(t => (t.tribunal || "").trim()).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="todos">Todos os tribunais</option>';
+  tribunais.forEach(tr => {
+    const opt = document.createElement("option");
+    opt.value = tr;
+    opt.textContent = tr;
+    sel.appendChild(opt);
+  });
+  if (tribunais.includes(currentVal)) sel.value = currentVal;
+}
+
+function addNewPieceType() {
+  const name = prompt("Informe o nome do novo tipo de peça processual:");
+  if (!name || !name.trim()) return;
+  const clean = name.trim();
+  if (!pieceTypes.includes(clean)) {
+    pieceTypes.push(clean);
+    pieceTypes.sort((a, b) => a.localeCompare(b, "pt-BR"));
+    saveStorage();
+    renderPieceTypeOptions();
+    document.getElementById("tipo-peca").value = clean;
+  }
+}
+
+function toggleSemPrazo(isChecked) {
+  const prazoInput = document.getElementById("prazo");
+  if (!prazoInput) return;
+  if (isChecked) {
+    prazoInput.value = "";
+    prazoInput.disabled = true;
+  } else {
+    prazoInput.disabled = false;
+  }
+}
+
+/* Regras de Vencimento e Prioridade */
+function isOverdue(task) {
+  if (!task.prazo || task.prazo === "SEM_PRAZO" || task.status === STATUS.CONCLUIDO) return false;
+  const hoje = startOfDay(new Date());
+  const p = parseDateLocal(task.prazo);
+  return p ? startOfDay(p) < hoje : false;
+}
+
+function getPriorityBadge(prio) {
+  if (prio === "urgente") return `<span class="badge badge-prio-urgente">Urgente</span>`;
+  if (prio === "sem_pressa") return `<span class="badge badge-prio-sem-pressa">Sem Pressa</span>`;
+  return `<span class="badge badge-prio-normal">Normal</span>`;
+}
+
+function getDocBadge(docStatus) {
+  if (docStatus === DOC_STATUS.SOLICITADO) return `<span class="badge badge-doc-solicitado">Solicitado</span>`;
+  if (docStatus === DOC_STATUS.RECEBIDO) return `<span class="badge badge-doc-recebido">Recebido</span>`;
+  return `<span class="badge badge-doc-nao">Não Solicitado</span>`;
+}
+
+/* Home / Resumo */
+function computeSummaries() {
+  const counts = { open: 0, done: 0, overdue: 0, urgent: 0, reminders: 0 };
+  const byPending = {};
+  
+  tasks.forEach(t => {
+    if (t.status === STATUS.CONCLUIDO) {
+      counts.done++;
+    } else {
+      if (t.prioridade === "urgente") counts.urgent++;
+      if (isOverdue(t)) {
+        counts.overdue++;
+      } else {
+        counts.open++;
+        byPending[t.tipoPeca] = (byPending[t.tipoPeca] || 0) + 1;
+      }
+    }
+  });
+
+  reminders.forEach(r => {
+    if (r.status !== STATUS.CONCLUIDO) counts.reminders++;
+  });
+
+  return { counts, byPending };
+}
+
+function renderHome() {
+  const ulUpcoming = document.getElementById("upcoming-list");
+  const ulUrgent = document.getElementById("urgent-list");
+  const ulHomeReminders = document.getElementById("home-reminder-list");
+  const controlsUpcoming = document.getElementById("upcoming-controls");
+  const urgentControls = document.getElementById("urgent-controls");
+  
+  if (!ulUpcoming || !ulUrgent || !ulHomeReminders) return;
+  ulUpcoming.innerHTML = "";
+  ulUrgent.innerHTML = "";
+  ulHomeReminders.innerHTML = "";
+  controlsUpcoming.innerHTML = "";
+  urgentControls.innerHTML = "";
+
+  // 1. Urgentes Pendentes
+  const urgentes = tasks
+    .filter(t => t.status !== STATUS.CONCLUIDO && t.prioridade === "urgente")
+    .map(t => ({ ...t, prazoDate: parseDateLocal(t.prazo) }))
+    .sort((a, b) => {
+      if (!a.prazoDate) return 1;
+      if (!b.prazoDate) return -1;
+      return a.prazoDate - b.prazoDate;
+    });
+
+  const totalUrgent = urgentes.length;
+  document.getElementById("count-urgent-badge").textContent = totalUrgent;
+
+  const urgentLimit = state.urgentExpanded ? Math.min(50, totalUrgent) : 5;
+  const listUrgent = urgentes.slice(0, urgentLimit);
+
+  if (listUrgent.length === 0) {
+    ulUrgent.innerHTML = '<li style="color: var(--text-muted); font-size: 0.8rem;">Nenhum prazo urgente pendente!</li>';
+  } else {
+    listUrgent.forEach(t => {
+      const li = document.createElement("li");
+      const prazoText = t.prazo === "SEM_PRAZO" || !t.prazo ? "Aguardando Abertura" : formatDateToBR(t.prazo);
+      li.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-radius: 4px; background: var(--danger-bg); margin-bottom: 4px;">
+          <div style="cursor: pointer; flex: 1;" onclick="openTaskDetail('${t.id}')">
+            <strong class="clickable-copy" data-text="${escapeHtml(t.cliente)}" data-label="Cliente" title="Clique para copiar" style="font-size: 0.85rem; color: var(--danger);">${escapeHtml(t.cliente)}</strong>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(t.tipoPeca)}</div>
+          </div>
+          <div style="text-align: right; font-weight: 700; font-size: 0.8rem; color: var(--danger); cursor: pointer;" onclick="openTaskDetail('${t.id}')">
+            ${prazoText}
+          </div>
+        </div>
+      `;
+      ulUrgent.appendChild(li);
+    });
+  }
+
+  if (totalUrgent > 5) {
+    const btnUrgent = document.createElement("button");
+    btnUrgent.className = "btn btn-ghost";
+    btnUrgent.style.fontSize = "0.78rem";
+    btnUrgent.textContent = state.urgentExpanded ? "Mostrar menos" : `Ver mais (${totalUrgent - 5} urgentes)`;
+    btnUrgent.onclick = () => { state.urgentExpanded = !state.urgentExpanded; renderHome(); };
+    urgentControls.appendChild(btnUrgent);
+  }
+
+  // 2. Próximos Vencimentos
+  const upcoming = tasks
+    .filter(t => t.status !== STATUS.CONCLUIDO && t.prazo && t.prazo !== "SEM_PRAZO")
+    .map(t => ({ ...t, prazoDate: parseDateLocal(t.prazo) }))
+    .filter(t => t.prazoDate)
+    .sort((a, b) => a.prazoDate - b.prazoDate);
+
+  const totalUpcoming = upcoming.length;
+  const upcomingLimit = state.upcomingExpanded ? Math.min(30, totalUpcoming) : 5;
+  const listUpcoming = upcoming.slice(0, upcomingLimit);
+
+  if (listUpcoming.length === 0) {
+    ulUpcoming.innerHTML = '<li style="color: var(--text-muted); font-size: 0.82rem;">Nenhum prazo com data para vencer.</li>';
+  } else {
+    listUpcoming.forEach(t => {
+      const li = document.createElement("li");
+      const diff = daysBetween(new Date(), t.prazoDate);
+      let badgeText = diff === 0 ? "Vence hoje" : diff === 1 ? "Vence amanhã" : diff < 0 ? `Atrasado (${Math.abs(diff)}d)` : `Faltam ${diff} dias`;
+      let badgeColor = diff < 0 ? "var(--danger)" : diff === 0 ? "var(--warning)" : "var(--accent)";
+
+      li.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 4px; background: var(--surface);">
+          <div style="cursor: pointer; flex: 1;" onclick="openTaskDetail('${t.id}')">
+            <strong class="clickable-copy" data-text="${escapeHtml(t.cliente)}" data-label="Cliente" title="Clique para copiar" style="font-size: 0.85rem;">${escapeHtml(t.cliente)}</strong>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">
+              <span class="clickable-copy" data-text="${escapeHtml(t.processo || '')}" data-label="Processo" title="Clique para copiar">${escapeHtml(t.processo || 'Sem processo')}</span> — ${escapeHtml(t.tipoPeca)}
+            </div>
+          </div>
+          <div style="text-align: right; cursor: pointer;" onclick="openTaskDetail('${t.id}')">
+            <div style="font-weight: 700; font-size: 0.82rem;">${formatDateToBR(t.prazo)}</div>
+            <div style="font-size: 0.72rem; font-weight: 600; color: ${badgeColor};">${badgeText}</div>
+          </div>
+        </div>
+      `;
+      ulUpcoming.appendChild(li);
+    });
+  }
+
+  if (totalUpcoming > 5) {
+    const btnUpcoming = document.createElement("button");
+    btnUpcoming.className = "btn btn-ghost";
+    btnUpcoming.style.fontSize = "0.78rem";
+    btnUpcoming.textContent = state.upcomingExpanded ? "Mostrar menos" : `Ver mais (${totalUpcoming - 5} prazos)`;
+    btnUpcoming.onclick = () => { state.upcomingExpanded = !state.upcomingExpanded; renderHome(); };
+    controlsUpcoming.appendChild(btnUpcoming);
+  }
+
+  // 3. Lembretes Ativos na Home
+  const activeReminders = reminders.filter(r => r.status !== STATUS.CONCLUIDO);
+  document.getElementById("count-reminder-badge").textContent = activeReminders.length;
+  if (activeReminders.length === 0) {
+    ulHomeReminders.innerHTML = '<li style="color: var(--text-muted); font-size: 0.8rem;">Nenhum lembrete pendente.</li>';
+  } else {
+    activeReminders.slice(0, 4).forEach(r => {
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-radius: 4px; background: var(--warning-bg); margin-bottom: 4px; font-size: 0.82rem;">
+          <div style="cursor: pointer; flex: 1;" onclick="navigate(null, 'reminders')">
+            <strong>${escapeHtml(r.titulo)}</strong>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">${escapeHtml(r.cliente || r.processo || 'Geral')}</div>
+          </div>
+          <div style="font-weight: 700; font-size: 0.78rem; color: var(--warning);">${formatDateToBR(r.dataAlvo)}</div>
+        </div>
+      `;
+      ulHomeReminders.appendChild(li);
+    });
+  }
+
+  const { counts, byPending } = computeSummaries();
+  document.getElementById("count-open").textContent = counts.open;
+  document.getElementById("count-done").textContent = counts.done;
+  document.getElementById("count-overdue").textContent = counts.overdue;
+
+  const bp = document.getElementById("breakdown-pending");
+  bp.innerHTML = "";
+  const entries = Object.entries(byPending).sort((a, b) => b[1] - a[1]);
+  if (entries.length === 0) {
+    bp.innerHTML = '<div style="color: var(--text-muted); font-size: 0.82rem;">Nenhum registro.</div>';
+  } else {
+    entries.forEach(([k, v]) => {
+      const row = document.createElement("div");
+      row.style.cssText = "display: flex; justify-content: space-between; font-size: 0.82rem; padding: 4px 6px; background: var(--surface-subtle); border-radius: 4px;";
+      row.innerHTML = `<span>${escapeHtml(k)}</span><strong>${v}</strong>`;
+      bp.appendChild(row);
+    });
+  }
+}
+
+/* Filtros e Tabela de Tarefas */
+function getFilteredTasks() {
+  const query = (state.currentSearch || "").trim().toLowerCase();
+  return tasks.filter(t => {
+    if (t.status === STATUS.CONCLUIDO) return false;
+
+    const overdue = isOverdue(t);
+    if (state.currentFilter === 'pendentes' && overdue) return false;
+    if (state.currentFilter === 'atrasado' && !overdue) return false;
+
+    if (state.currentTribunal !== 'todos' && (t.tribunal || "").trim() !== state.currentTribunal) return false;
+    if (state.currentPrioridade !== 'todos' && (t.prioridade || "normal") !== state.currentPrioridade) return false;
+    if (!query) return true;
+    return (t.cliente || "").toLowerCase().includes(query) ||
+           (t.processo || "").toLowerCase().includes(query) ||
+           (t.tipoPeca || "").toLowerCase().includes(query) ||
+           (t.tribunal || "").toLowerCase().includes(query) ||
+           (t.observacoes || "").toLowerCase().includes(query);
+  });
+}
+
+function renderTasks() {
+  const tbody = document.getElementById("task-table-body");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  const filtered = getFilteredTasks().sort((a, b) => {
+    if (!a.prazo || a.prazo === "SEM_PRAZO") return 1;
+    if (!b.prazo || b.prazo === "SEM_PRAZO") return -1;
+    return parseDateLocal(a.prazo) - parseDateLocal(b.prazo);
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / state.pageSize));
+  if (state.currentPage > totalPages) state.currentPage = totalPages;
+  const start = (state.currentPage - 1) * state.pageSize;
+  const pageItems = filtered.slice(start, start + state.pageSize);
+
+  if (pageItems.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 16px;">Nenhum registro encontrado.</td></tr>`;
+  } else {
+    const frag = document.createDocumentFragment();
+    pageItems.forEach(task => {
+      const tr = document.createElement("tr");
+      tr.id = `task-row-${task.id}`;
+      const overdue = isOverdue(task);
+      if (overdue) tr.style.backgroundColor = "var(--danger-bg)";
+
+      const statusBadge = overdue ? `<span class="badge badge-atraso">Atrasado</span>` : 
+        (!task.prazo || task.prazo === "SEM_PRAZO") ? `<span class="badge badge-sem-prazo">Aguardando Abertura</span>` :
+        `<span class="badge badge-pendente">Pendente</span>`;
+
+      tr.innerHTML = `
+        <td class="col-cliente"><strong class="clickable-copy" data-text="${escapeHtml(task.cliente)}" data-label="Cliente" title="Clique para copiar">${escapeHtml(task.cliente)}</strong></td>
+        <td class="col-processo"><span class="clickable-copy" data-text="${escapeHtml(task.processo || '')}" data-label="Processo" title="Clique para copiar">${escapeHtml(task.processo || '-')}</span></td>
+        <td class="col-tribunal">${escapeHtml(task.tribunal || '-')}</td>
+        <td class="col-peca">${escapeHtml(task.tipoPeca)}</td>
+        <td class="col-prio">${getPriorityBadge(task.prioridade)}</td>
+        <td class="col-prazo">${formatDateToBR(task.prazo)}</td>
+        <td class="col-status">${statusBadge}</td>
+        <td class="col-acoes">
+          <div class="actions-wrapper">
+            <button class="btn btn-ghost" style="padding: 3px 6px; font-size: 0.75rem;" onclick="openTaskDetail('${task.id}')">Detalhes</button>
+            <button class="btn btn-ghost" style="padding: 3px 6px; font-size: 0.75rem;" onclick="editTask('${task.id}')">Editar</button>
+            <button class="btn btn-primary" style="padding: 3px 6px; font-size: 0.75rem;" onclick="toggleTaskStatus('${task.id}')">Cumprir</button>
+            <button class="btn btn-danger" style="padding: 3px 6px; font-size: 0.75rem;" onclick="deleteTask('${task.id}')">Excluir</button>
+          </div>
+        </td>
+      `;
+      frag.appendChild(tr);
+    });
+    tbody.appendChild(frag);
+  }
+
+  renderPagination(totalPages);
+  renderCompletedTasks();
+  renderReminders();
+  renderDocumentsTable();
+}
+
+function renderPagination(totalPages) {
+  const pc = document.getElementById("pagination-controls");
+  if (!pc) return;
+  pc.innerHTML = "";
+  if (totalPages <= 1) return;
+
+  for (let i = 1; i <= totalPages; i++) {
+    const btn = document.createElement("button");
+    btn.className = i === state.currentPage ? "btn btn-primary" : "btn btn-ghost";
+    btn.style.padding = "4px 8px";
+    btn.style.fontSize = "0.78rem";
+    btn.textContent = i;
+    btn.onclick = () => { state.currentPage = i; renderTasks(); };
+    pc.appendChild(btn);
+  }
+}
+
+function renderCompletedTasks() {
+  const tbody = document.getElementById("completed-table-body");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  const completed = tasks
+    .filter(t => t.status === STATUS.CONCLUIDO)
+    .sort((a, b) => new Date(b.concluidoEm || b.updatedAt) - new Date(a.concluidoEm || a.updatedAt));
+
+  if (completed.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 16px;">Nenhum prazo cumprido registrado.</td></tr>`;
+    return;
+  }
+
+  const frag = document.createDocumentFragment();
+  completed.forEach(t => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="col-cliente"><strong class="clickable-copy" data-text="${escapeHtml(t.cliente)}" data-label="Cliente" title="Clique para copiar">${escapeHtml(t.cliente)}</strong></td>
+      <td class="col-processo"><span class="clickable-copy" data-text="${escapeHtml(t.processo || '')}" data-label="Processo" title="Clique para copiar">${escapeHtml(t.processo || '-')}</span></td>
+      <td class="col-tribunal">${escapeHtml(t.tribunal || '-')}</td>
+      <td class="col-peca">${escapeHtml(t.tipoPeca)}</td>
+      <td class="col-prio">${getPriorityBadge(t.prioridade)}</td>
+      <td class="col-prazo">${formatDateToBR(t.prazo)}</td>
+      <td class="col-prazo">${t.concluidoEm ? formatDateToBR(t.concluidoEm) : '-'}</td>
+      <td class="col-acoes" style="text-align: right;">
+        <button class="btn btn-ghost" style="padding: 3px 6px; font-size: 0.75rem;" onclick="openTaskDetail('${t.id}')">Detalhes</button>
+      </td>
+    `;
+    frag.appendChild(tr);
+  });
+  tbody.appendChild(frag);
+}
+
+/* Documentos Solicitados Functions */
+function renderDocumentsTable() {
+  const tbody = document.getElementById("documents-table-body");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  const docTasks = tasks.filter(t => t.status !== STATUS.CONCLUIDO && t.pedirDocumentos);
+
+  if (docTasks.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 16px;">Nenhuma tarefa com solicitação de documentos pendente.</td></tr>`;
+    return;
+  }
+
+  docTasks.sort((a, b) => {
+    if (!a.prazo || a.prazo === "SEM_PRAZO") return 1;
+    if (!b.prazo || b.prazo === "SEM_PRAZO") return -1;
+    return a.prazo.localeCompare(b.prazo);
+  });
+
+  const frag = document.createDocumentFragment();
+  docTasks.forEach(t => {
+    const tr = document.createElement("tr");
+    const docStatus = t.docStatus || DOC_STATUS.NAO_SOLICITADO;
+
+    tr.innerHTML = `
+      <td class="col-cliente"><strong class="clickable-copy" data-text="${escapeHtml(t.cliente)}" data-label="Cliente" title="Clique para copiar">${escapeHtml(t.cliente)}</strong></td>
+      <td class="col-processo"><span class="clickable-copy" data-text="${escapeHtml(t.processo || '')}" data-label="Processo" title="Clique para copiar">${escapeHtml(t.processo || '-')}</span></td>
+      <td style="text-align: center;">${escapeHtml(t.tribunal || '-')}</td>
+      <td><span class="clickable-copy" data-text="${escapeHtml(t.telefone || '')}" data-label="Telefone" title="Clique para copiar">${escapeHtml(t.telefone || '-')}</span></td>
+      <td style="text-align: center; font-weight: 600;">${formatDateToBR(t.prazo)}</td>
+      <td style="text-align: center;">
+        <select onchange="updateDocStatus('${t.id}', this.value)" style="font-weight: 600; font-size: 0.8rem; padding: 4px 6px; border-radius: 4px; ${docStatus === DOC_STATUS.NAO_SOLICITADO ? 'background: var(--danger-bg); color: var(--danger); border-color: var(--danger);' : docStatus === DOC_STATUS.SOLICITADO ? 'background: var(--warning-bg); color: var(--warning); border-color: var(--warning);' : 'background: var(--primary-light); color: var(--accent); border-color: var(--accent);'}">
+          <option value="${DOC_STATUS.NAO_SOLICITADO}" ${docStatus === DOC_STATUS.NAO_SOLICITADO ? 'selected' : ''}>Não Solicitado</option>
+          <option value="${DOC_STATUS.SOLICITADO}" ${docStatus === DOC_STATUS.SOLICITADO ? 'selected' : ''}>Solicitado</option>
+          <option value="${DOC_STATUS.RECEBIDO}" ${docStatus === DOC_STATUS.RECEBIDO ? 'selected' : ''}>Recebido</option>
+        </select>
+      </td>
+      <td style="text-align: right;">
+        <div class="actions-wrapper">
+          <button class="btn btn-ghost" style="padding: 3px 6px; font-size: 0.75rem;" onclick="openTaskDetail('${t.id}')">Detalhes</button>
+          <button class="btn btn-ghost" style="padding: 3px 6px; font-size: 0.75rem;" onclick="editTask('${t.id}')">Editar</button>
+        </div>
+      </td>
+    `;
+    frag.appendChild(tr);
+  });
+  tbody.appendChild(frag);
+}
+
+function updateDocStatus(taskId, newStatus) {
+  const t = tasks.find(item => item.id === taskId);
+  if (!t) return;
+  t.docStatus = newStatus;
+  t.updatedAt = new Date().toISOString();
+  saveStorage();
+  renderDocumentsTable();
+  showToast("Status de documentos atualizado!");
+}
+
+/* Lembretes Functions */
+function renderReminders() {
+  const tbody = document.getElementById("reminder-table-body");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  const sorted = reminders.slice().sort((a, b) => {
+    if (a.status === STATUS.CONCLUIDO && b.status !== STATUS.CONCLUIDO) return 1;
+    if (a.status !== STATUS.CONCLUIDO && b.status === STATUS.CONCLUIDO) return -1;
+    if (!a.dataAlvo) return 1;
+    if (!b.dataAlvo) return -1;
+    return a.dataAlvo.localeCompare(b.dataAlvo);
+  });
+
+  if (sorted.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 16px;">Nenhum lembrete cadastrado.</td></tr>`;
+    return;
+  }
+
+  const frag = document.createDocumentFragment();
+  sorted.forEach(r => {
+    const tr = document.createElement("tr");
+    if (r.status === STATUS.CONCLUIDO) tr.style.opacity = "0.6";
+
+    const statusBadge = r.status === STATUS.CONCLUIDO ? 
+      `<span class="badge badge-concluido">Concluído</span>` : 
+      `<span class="badge badge-pendente">Pendente</span>`;
+
+    tr.innerHTML = `
+      <td><strong>${escapeHtml(r.titulo)}</strong>${r.obs ? '<div style="font-size: 0.75rem; color: var(--text-muted);">'+escapeHtml(r.obs)+'</div>' : ''}</td>
+      <td>${escapeHtml(r.cliente || '-')}</td>
+      <td><span style="font-family: monospace; font-size: 0.8rem;">${escapeHtml(r.processo || '-')}</span></td>
+      <td style="text-align: center; font-weight: 600;">${formatDateToBR(r.dataAlvo)}</td>
+      <td style="text-align: center;">${statusBadge}</td>
+      <td style="text-align: right;">
+        <div class="actions-wrapper">
+          <button class="btn btn-ghost" style="padding: 3px 6px; font-size: 0.75rem;" onclick="toggleReminderStatus('${r.id}')">${r.status === STATUS.CONCLUIDO ? 'Reabrir' : 'Concluir'}</button>
+          <button class="btn btn-ghost" style="padding: 3px 6px; font-size: 0.75rem;" onclick="editReminder('${r.id}')">Editar</button>
+          <button class="btn btn-danger" style="padding: 3px 6px; font-size: 0.75rem;" onclick="deleteReminder('${r.id}')">Excluir</button>
+        </div>
+      </td>
+    `;
+    frag.appendChild(tr);
+  });
+  tbody.appendChild(frag);
+}
+
+function openReminderModal() {
+  document.getElementById("rem-id").value = "";
+  document.getElementById("reminder-form").reset();
+  document.getElementById("reminder-modal-title").textContent = "Novo Lembrete / Diligência";
+  document.getElementById("reminder-modal").classList.remove("hidden");
+}
+
+function closeReminderModal() {
+  document.getElementById("reminder-modal").classList.add("hidden");
+}
+
+function handleReminderSubmit(e) {
+  e.preventDefault();
+  const id = document.getElementById("rem-id").value;
+  const titulo = document.getElementById("rem-titulo").value.trim();
+  const cliente = document.getElementById("rem-cliente").value.trim();
+  const processo = document.getElementById("rem-processo").value.trim();
+  const dataAlvo = document.getElementById("rem-data").value;
+  const obs = document.getElementById("rem-obs").value.trim();
+
+  if (!titulo) return;
+
+  const now = new Date().toISOString();
+  if (id) {
+    const idx = reminders.findIndex(r => r.id === id);
+    if (idx !== -1) {
+      reminders[idx] = { ...reminders[idx], titulo, cliente, processo, dataAlvo, obs, updatedAt: now };
+    }
+  } else {
+    reminders.push({
+      id: String(Date.now()) + "_" + Math.random().toString(16).slice(2),
+      titulo, cliente, processo, dataAlvo, obs,
+      status: STATUS.PENDENTE,
+      createdAt: now,
+      updatedAt: now
+    });
+  }
+
+  saveStorage();
+  closeReminderModal();
+  renderHome();
+  renderTasks();
+  renderCalendar();
+}
+
+function editReminder(id) {
+  const r = reminders.find(item => item.id === id);
+  if (!r) return;
+  document.getElementById("rem-id").value = r.id;
+  document.getElementById("rem-titulo").value = r.titulo || "";
+  document.getElementById("rem-cliente").value = r.cliente || "";
+  document.getElementById("rem-processo").value = r.processo || "";
+  document.getElementById("rem-data").value = r.dataAlvo || "";
+  document.getElementById("rem-obs").value = r.obs || "";
+  document.getElementById("reminder-modal-title").textContent = "Editar Lembrete / Diligência";
+  document.getElementById("reminder-modal").classList.remove("hidden");
+}
+
+function toggleReminderStatus(id) {
+  const r = reminders.find(item => item.id === id);
+  if (!r) return;
+  r.status = r.status === STATUS.CONCLUIDO ? STATUS.PENDENTE : STATUS.CONCLUIDO;
+  r.updatedAt = new Date().toISOString();
+  saveStorage();
+  renderHome();
+  renderTasks();
+  renderCalendar();
+}
+
+function deleteReminder(id) {
+  if (!confirm("Deseja excluir este lembrete?")) return;
+  reminders = reminders.filter(r => r.id !== id);
+  saveStorage();
+  renderHome();
+  renderTasks();
+  renderCalendar();
+}
+
+/* Abrir Página de Detalhes da Tarefa */
+function openTaskDetail(id) {
+  const t = tasks.find(item => item.id === id);
+  if (!t) return;
+
+  document.getElementById("det-cliente").textContent = t.cliente || "-";
+  document.getElementById("det-cliente").setAttribute("data-text", t.cliente || "");
+  document.getElementById("det-cliente").setAttribute("data-label", "Cliente");
+
+  document.getElementById("det-telefone").textContent = t.telefone || "-";
+  document.getElementById("det-telefone").setAttribute("data-text", t.telefone || "");
+  document.getElementById("det-telefone").setAttribute("data-label", "Telefone");
+
+  document.getElementById("det-processo").textContent = t.processo || "Sem processo registrado";
+  document.getElementById("det-processo").setAttribute("data-text", t.processo || "");
+  document.getElementById("det-processo").setAttribute("data-label", "Processo");
+
+  document.getElementById("det-tribunal").textContent = t.tribunal || "-";
+  document.getElementById("det-peca").textContent = t.tipoPeca || "-";
+  document.getElementById("det-prioridade").innerHTML = getPriorityBadge(t.prioridade);
+
+  const overdue = isOverdue(t);
+  const statusHtml = t.status === STATUS.CONCLUIDO ? 
+    `<span class="badge badge-concluido">Cumprido</span>` : 
+    overdue ? `<span class="badge badge-atraso">Atrasado</span>` : 
+    (!t.prazo || t.prazo === "SEM_PRAZO") ? `<span class="badge badge-sem-prazo">Aguardando Abertura</span>` :
+    `<span class="badge badge-pendente">Pendente</span>`;
+  document.getElementById("det-status").innerHTML = statusHtml;
+
+  document.getElementById("det-prazo").textContent = formatDateToBR(t.prazo);
+  document.getElementById("det-doc-status").innerHTML = t.pedirDocumentos ? getDocBadge(t.docStatus || DOC_STATUS.NAO_SOLICITADO) : '<span style="color:var(--text-muted);">Não requerido</span>';
+
+  document.getElementById("det-observacoes").textContent = t.observacoes || "Nenhuma observação cadastrada.";
+
+  const actionsDiv = document.getElementById("det-actions");
+  actionsDiv.innerHTML = `
+    <button class="btn btn-ghost" onclick="editTask('${t.id}')">Editar Prazo</button>
+    <button class="btn btn-primary" onclick="toggleTaskStatus('${t.id}'); openTaskDetail('${t.id}');">${t.status === STATUS.CONCLUIDO ? 'Reabrir Prazo' : 'Marcar como Cumprido'}</button>
+    <button class="btn btn-danger" onclick="if(confirm('Deseja excluir?')) { deleteTask('${t.id}'); navigate(null, 'list'); }">Excluir</button>
+  `;
+
+  navigate(null, 'task-detail');
+}
+
+/* Agenda */
+const months = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+function renderCalendar() {
+  const grid = document.getElementById("calendar-grid");
+  const title = document.getElementById("cal-month-title");
+  if (!grid || !title) return;
+  grid.innerHTML = "";
+
+  const year = state.calendarDate.getFullYear();
+  const month = state.calendarDate.getMonth();
+  title.textContent = `${months[month]} ${year}`;
+
+  const firstDayIndex = new Date(year, month, 1).getDay();
+  const totalDays = new Date(year, month + 1, 0).getDate();
+
+  for (let i = 0; i < firstDayIndex; i++) {
+    const cell = document.createElement("div");
+    cell.className = "calendar-day";
+    cell.style.opacity = "0.2";
+    grid.appendChild(cell);
+  }
+
+  for (let d = 1; d <= totalDays; d++) {
+    const cell = document.createElement("div");
+    cell.className = "calendar-day";
+    const dateStr = `${year}-${pad(month + 1)}-${pad(d)}`;
+    
+    const dayTasks = tasks.filter(t => t.prazo === dateStr);
+    const dayReminders = reminders.filter(r => r.dataAlvo === dateStr);
+
+    let contentHtml = "";
+    dayTasks.forEach(t => {
+      let bg = t.status === STATUS.CONCLUIDO ? "var(--success-bg)" : isOverdue(t) ? "var(--danger-bg)" : "var(--primary-light)";
+      let color = t.status === STATUS.CONCLUIDO ? "var(--success)" : isOverdue(t) ? "var(--danger)" : "var(--accent)";
+      contentHtml += `<div style="background: ${bg}; color: ${color}; padding: 2px 4px; border-radius: 3px; font-size: 0.72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; font-weight: 600;" title="Prazo: ${escapeHtml(t.cliente)} - ${escapeHtml(t.tipoPeca)}" onclick="openTaskDetail('${t.id}')">⚖️ ${escapeHtml(t.cliente)}</div>`;
+    });
+
+    dayReminders.forEach(r => {
+      let bg = r.status === STATUS.CONCLUIDO ? "var(--surface-subtle)" : "var(--warning-bg)";
+      let color = "var(--warning)";
+      contentHtml += `<div style="background: ${bg}; color: ${color}; padding: 2px 4px; border-radius: 3px; font-size: 0.72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600;" title="Lembrete: ${escapeHtml(r.titulo)}">🔔 ${escapeHtml(r.titulo)}</div>`;
+    });
+
+    cell.innerHTML = `<div class="calendar-day-num">${d}</div>${contentHtml}`;
+    grid.appendChild(cell);
+  }
+}
+
+function changeMonth(direction) {
+  state.calendarDate = new Date(state.calendarDate.getFullYear(), state.calendarDate.getMonth() + direction, 1);
+  renderCalendar();
+}
+
+/* Central de Relatórios */
+function generateReport(e) {
+  if (e) e.preventDefault();
+  const tipoReg = document.getElementById("rep-tipo-reg").value;
+  const statusFiltro = document.getElementById("rep-status").value;
+  const pecaFiltro = document.getElementById("rep-peca").value;
+  const ordem = document.getElementById("rep-ordem").value;
+  const dataIni = document.getElementById("rep-data-ini").value;
+  const dataFim = document.getElementById("rep-data-fim").value;
+
+  const container = document.getElementById("report-results-container");
+
+  let pecaLabel = tipoReg === "prazos" ? (pecaFiltro === "todas" ? "Todas as Peças" : pecaFiltro) : "Lembretes";
+  let statusLabel = "";
+  if (tipoReg === "prazos") {
+    if (statusFiltro === "pendente") statusLabel = "pendentes";
+    else if (statusFiltro === "atrasado") statusLabel = "atrasadas";
+    else if (statusFiltro === "concluido") statusLabel = "cumpridas";
+    else statusLabel = "registradas";
+  } else {
+    if (statusFiltro === "pendente") statusLabel = "pendentes";
+    else if (statusFiltro === "concluido") statusLabel = "concluídos";
+    else statusLabel = "registrados";
+  }
+
+  let periodoLabel = "";
+  if (dataIni && dataFim) {
+    periodoLabel = `entre os dias ${formatDateToBR(dataIni)} e ${formatDateToBR(dataFim)}`;
+  } else if (dataIni) {
+    periodoLabel = `a partir de ${formatDateToBR(dataIni)}`;
+  } else if (dataFim) {
+    periodoLabel = `até o dia ${formatDateToBR(dataFim)}`;
+  } else {
+    periodoLabel = `em todo o período`;
+  }
+
+  let criterioFrase = `${pecaLabel} ${statusLabel} ${periodoLabel}`;
+
+  if (tipoReg === "prazos") {
+    let list = tasks.filter(t => {
+      const overdue = isOverdue(t);
+      if (statusFiltro === "pendente" && (t.status === STATUS.CONCLUIDO || overdue)) return false;
+      if (statusFiltro === "atrasado" && !overdue) return false;
+      if (statusFiltro === "concluido" && t.status !== STATUS.CONCLUIDO) return false;
+
+      if (pecaFiltro !== "todas" && t.tipoPeca !== pecaFiltro) return false;
+
+      const refDate = ordem === "cumprimento" ? t.concluidoEm : t.prazo;
+      if (dataIni && refDate && refDate < dataIni) return false;
+      if (dataFim && refDate && refDate > dataFim) return false;
+
+      return true;
+    });
+
+    list.sort((a, b) => {
+      if (ordem === "cliente") return (a.cliente || "").localeCompare(b.cliente || "", "pt-BR");
+      if (ordem === "cumprimento") return (b.concluidoEm || "").localeCompare(a.concluidoEm || "");
+      if (!a.prazo || a.prazo === "SEM_PRAZO") return 1;
+      if (!b.prazo || b.prazo === "SEM_PRAZO") return -1;
+      return a.prazo.localeCompare(b.prazo);
+    });
+
+    if (list.length === 0) {
+      container.innerHTML = `
+        <div style="margin-bottom: 12px; padding: 10px 14px; background: var(--surface-subtle); border-left: 4px solid var(--accent); border-radius: 4px;">
+          <div style="font-weight: 700; font-size: 0.95rem;">Relatório de Prazos Processuais</div>
+          <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">Critérios: <strong>“${criterioFrase}”</strong> (0 registros encontrados)</div>
+        </div>
+        <div style="text-align: center; color: var(--text-muted); padding: 20px;">Nenhum registro encontrado para os filtros selecionados.</div>`;
+      return;
+    }
+
+    let html = `
+      <div style="margin-bottom: 12px; padding: 10px 14px; background: var(--surface-subtle); border-left: 4px solid var(--accent); border-radius: 4px;">
+        <div style="font-weight: 700; font-size: 0.95rem;">Relatório de Prazos Processuais</div>
+        <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">Critérios: <strong>“${criterioFrase}”</strong> (${list.length} registros)</div>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Processo</th>
+              <th>Tribunal</th>
+              <th>Peça</th>
+              <th>Prioridade</th>
+              <th>Prazo Final</th>
+              <th>Cumprido Em</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    list.forEach(t => {
+      const overdue = isOverdue(t);
+      const st = t.status === STATUS.CONCLUIDO ? "Cumprido" : overdue ? "Atrasado" : "Pendente";
+      html += `        <tr>
+          <td><strong>${escapeHtml(t.cliente)}</strong></td>
+          <td style="font-family: monospace; font-size: 0.8rem;">${escapeHtml(t.processo || '-')}</td>
+          <td>${escapeHtml(t.tribunal || '-')}</td>
+          <td>${escapeHtml(t.tipoPeca)}</td>
+          <td>${t.prioridade}</td>
+          <td>${formatDateToBR(t.prazo)}</td>
+          <td>${t.concluidoEm ? formatDateToBR(t.concluidoEm) : '-'}</td>
+          <td>${st}</td>
+        </tr>
+      `;
+    });
+
+    html += `</tbody></table></div>`;
+    container.innerHTML = html;
+
+  } else {
+    let list = reminders.filter(r => {
+      if (statusFiltro === "pendente" && r.status === STATUS.CONCLUIDO) return false;
+      if (statusFiltro === "concluido" && r.status !== STATUS.CONCLUIDO) return false;
+
+      if (dataIni && r.dataAlvo && r.dataAlvo < dataIni) return false;
+      if (dataFim && r.dataAlvo && r.dataAlvo > dataFim) return false;
+
+      return true;
+    });
+
+    list.sort((a, b) => {
+      if (ordem === "cliente") return (a.cliente || "").localeCompare(b.cliente || "", "pt-BR");
+      return (a.dataAlvo || "").localeCompare(b.dataAlvo || "");
+    });
+
+    if (list.length === 0) {
+      container.innerHTML = `
+        <div style="margin-bottom: 12px; padding: 10px 14px; background: var(--surface-subtle); border-left: 4px solid var(--accent); border-radius: 4px;">
+          <div style="font-weight: 700; font-size: 0.95rem;">Relatório de Lembretes e Diligências</div>
+          <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">Critérios: <strong>“${criterioFrase}”</strong> (0 registros encontrados)</div>
+        </div>
+        <div style="text-align: center; color: var(--text-muted); padding: 20px;">Nenhum lembrete encontrado para os filtros selecionados.</div>`;
+      return;
+    }
+
+    let html = `
+      <div style="margin-bottom: 12px; padding: 10px 14px; background: var(--surface-subtle); border-left: 4px solid var(--accent); border-radius: 4px;">
+        <div style="font-weight: 700; font-size: 0.95rem;">Relatório de Lembretes e Diligências</div>
+        <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">Critérios: <strong>“${criterioFrase}”</strong> (${list.length} registros)</div>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Título / Ação</th>
+              <th>Cliente</th>
+              <th>Processo / Tribunal</th>
+              <th>Data Alvo</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    list.forEach(r => {
+      const st = r.status === STATUS.CONCLUIDO ? "Concluído" : "Pendente";
+      html += `
+        <tr>
+          <td><strong>${escapeHtml(r.titulo)}</strong>${r.obs ? '<div style="font-size:0.75rem; color:var(--text-muted);">'+escapeHtml(r.obs)+'</div>' : ''}</td>
+          <td>${escapeHtml(r.cliente || '-')}</td>
+          <td><span style="font-family: monospace; font-size: 0.8rem;">${escapeHtml(r.processo || '-')}</span></td>
+          <td>${formatDateToBR(r.dataAlvo)}</td>
+          <td>${st}</td>
+        </tr>
+      `;
+    });
+
+    html += `</tbody></table></div>`;
+    container.innerHTML = html;
+  }
+}
+
+function printReport() {
+  window.print();
+}
+
+/* CRUD */
+function handleFormSubmit(e) {
+  e.preventDefault();
+  const id = document.getElementById("task-id").value;
+  const cliente = document.getElementById("cliente").value.trim();
+  const telefone = document.getElementById("telefone").value.trim();
+  const processo = document.getElementById("processo").value.trim();
+  const tribunal = document.getElementById("tribunal").value.trim();
+  const tipoPeca = document.getElementById("tipo-peca").value;
+  const semPrazoChecked = document.getElementById("sem-prazo").checked;
+  const prazoVal = document.getElementById("prazo").value;
+  const prioridade = document.getElementById("prioridade").value;
+  const pedirDocumentos = document.getElementById("pedir-documentos").checked;
+  const observacoes = document.getElementById("observacoes").value.trim();
+
+  const prazo = semPrazoChecked ? "SEM_PRAZO" : prazoVal;
+
+  if (!cliente || !tipoPeca) {
+    alert("Preencha os campos obrigatórios.");
+    return;
+  }
+
+  if (!semPrazoChecked && !prazoVal) {
+    alert("Informe a data final ou marque a opção 'Prazo ainda não aberto / Sem data final'.");
+    return;
+  }
+
+  const now = new Date().toISOString();
+  if (id) {
+    const idx = tasks.findIndex(t => t.id === id);
+    if (idx !== -1) {
+      const oldPedir = tasks[idx].pedirDocumentos;
+      const oldDocStatus = tasks[idx].docStatus;
+      
+      let docStatus = DOC_STATUS.NAO_SOLICITADO;
+      if (pedirDocumentos) {
+        docStatus = oldPedir ? (oldDocStatus || DOC_STATUS.NAO_SOLICITADO) : DOC_STATUS.NAO_SOLICITADO;
+      }
+
+      tasks[idx] = { 
+        ...tasks[idx], 
+        cliente, telefone, processo, tribunal, tipoPeca, prazo, prioridade, 
+        pedirDocumentos, docStatus, observacoes, updatedAt: now 
+      };
+    }
+  } else {
+    tasks.push({
+      id: String(Date.now()) + "_" + Math.random().toString(16).slice(2),
+      cliente, telefone, processo, tribunal, tipoPeca, prazo, prioridade,
+      pedirDocumentos,
+      docStatus: pedirDocumentos ? DOC_STATUS.NAO_SOLICITADO : DOC_STATUS.NAO_SOLICITADO,
+      observacoes,
+      status: STATUS.PENDENTE,
+      createdAt: now,
+      updatedAt: now,
+      concluidoEm: null
+    });
+  }
+
+  saveStorage();
+  updateTribunalFilterOptions();
+  resetTaskForm();
+  renderHome();
+  renderTasks();
+  renderCalendar();
+  navigate(null, 'list');
+}
+
+function editTask(id) {
+  const t = tasks.find(item => item.id === id);
+  if (!t) return;
+  document.getElementById("task-id").value = t.id;
+  document.getElementById("cliente").value = t.cliente || "";
+  document.getElementById("telefone").value = t.telefone || "";
+  document.getElementById("processo").value = t.processo || "";
+  document.getElementById("tribunal").value = t.tribunal || "";
+  document.getElementById("tipo-peca").value = t.tipoPeca || "";
+  document.getElementById("prioridade").value = t.prioridade || "normal";
+  document.getElementById("pedir-documentos").checked = !!t.pedirDocumentos;
+  document.getElementById("observacoes").value = t.observacoes || "";
+
+  const semPrazoCheck = document.getElementById("sem-prazo");
+  const prazoInput = document.getElementById("prazo");
+  if (t.prazo === "SEM_PRAZO" || !t.prazo) {
+    semPrazoCheck.checked = true;
+    prazoInput.value = "";
+    prazoInput.disabled = true;
+  } else {
+    semPrazoCheck.checked = false;
+    prazoInput.value = t.prazo;
+    prazoInput.disabled = false;
+  }
+
+  document.getElementById("form-title").textContent = "Editar Prazo Processual";
+  navigate(null, 'add');
+}
+
+function toggleTaskStatus(id) {
+  const t = tasks.find(item => item.id === id);
+  if (!t) return;
+  const now = new Date().toISOString();
+  if (t.status === STATUS.CONCLUIDO) {
+    t.status = STATUS.PENDENTE;
+    t.concluidoEm = null;
+  } else {
+    t.status = STATUS.CONCLUIDO;
+    t.concluidoEm = now.split("T")[0];
+  }
+  t.updatedAt = now;
+  saveStorage();
+  renderHome();
+  renderTasks();
+  renderCalendar();
+}
+
+function deleteTask(id) {
+  if (!confirm("Deseja realmente excluir este registro?")) return;
+  tasks = tasks.filter(t => t.id !== id);
+  saveStorage();
+  updateTribunalFilterOptions();
+  renderHome();
+  renderTasks();
+  renderCalendar();
+}
+
+function resetTaskForm() {
+  const f = document.getElementById("task-form");
+  if (f) f.reset();
+  document.getElementById("task-id").value = "";
+  document.getElementById("prazo").disabled = false;
+  document.getElementById("sem-prazo").checked = false;
+  document.getElementById("pedir-documentos").checked = false;
+  document.getElementById("form-title").textContent = "Cadastrar Novo Prazo Processual";
+}
+
+function setFilter(val) {
+  state.currentFilter = val;
+  state.currentPage = 1;
+  renderTasks();
+}
+
+function setTribunalFilter(val) {
+  state.currentTribunal = val;
+  state.currentPage = 1;
+  renderTasks();
+}
+
+function setPrioridadeFilter(val) {
+  state.currentPrioridade = val;
+  state.currentPage = 1;
+  renderTasks();
+}
+
+function changePageSize(val) {
+  state.pageSize = parseInt(val, 10);
+  state.currentPage = 1;
+  renderTasks();
+}
+
+/* Navegação */
+function navigate(event, targetId) {
+  if (event) event.preventDefault();
+  document.querySelectorAll(".sidebar .nav-item").forEach(el => {
+    if (el.getAttribute("data-target") === targetId) el.classList.add("active");
+    else el.classList.remove("active");
+  });
+  document.querySelectorAll("main > section").forEach(sec => {
+    if (sec.id === targetId) sec.classList.remove("hidden");
+    else sec.classList.add("hidden");
+  });
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* Import / Export */
+function exportJSON() {
+  const data = { version: 5.0, exportDate: new Date().toISOString(), tasks, reminders, pieceTypes };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `zen_backup_${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportCompletedJSON() {
+  const completed = tasks.filter(t => t.status === STATUS.CONCLUIDO);
+  const data = { version: 5.0, exportDate: new Date().toISOString(), tasks: completed };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `zen_cumpridos_${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importJSON() {
+  const input = document.getElementById("file-import");
+  const file = input && input.files ? input.files[0] : null;
+  const statusEl = document.getElementById("import-status");
+  if (!file) {
+    statusEl.textContent = "Selecione um arquivo .json válido.";
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data || !Array.isArray(data.tasks)) {
+        statusEl.textContent = "Arquivo JSON inválido ou incompatível.";
+        return;
+      }
+      if (!confirm(`O arquivo contém ${data.tasks.length} registro(s). Deseja mesclar com a base atual?`)) return;
+
+      const existingIds = new Set(tasks.map(t => t.id));
+      let added = 0;
+      data.tasks.forEach(t => {
+        if (!t.id || !existingIds.has(t.id)) {
+          tasks.push({
+            id: t.id || (String(Date.now()) + "_" + Math.random().toString(16).slice(2)),
+            cliente: t.cliente || "",
+            telefone: t.telefone || "",
+            processo: t.processo || "",
+            tribunal: t.tribunal || "",
+            tipoPeca: t.tipoPeca || "",
+            prazo: t.prazo || "SEM_PRAZO",
+            prioridade: t.prioridade || "normal",
+            pedirDocumentos: !!t.pedirDocumentos,
+            docStatus: t.docStatus || DOC_STATUS.NAO_SOLICITADO,
+            observacoes: t.observacoes || "",
+            status: t.status === STATUS.CONCLUIDO ? STATUS.CONCLUIDO : STATUS.PENDENTE,
+            createdAt: t.createdAt || new Date().toISOString(),
+            updatedAt: t.updatedAt || new Date().toISOString(),
+            concluidoEm: t.concluidoEm || null
+          });
+          added++;
+        }
+      });
+
+      if (Array.isArray(data.reminders)) {
+        const existingRemIds = new Set(reminders.map(r => r.id));
+        data.reminders.forEach(r => {
+          if (!r.id || !existingRemIds.has(r.id)) {
+            reminders.push(r);
+          }
+        });
+      }
+
+      if (Array.isArray(data.pieceTypes)) {
+        data.pieceTypes.forEach(pt => { if (pt && !pieceTypes.includes(pt)) pieceTypes.push(pt); });
+        pieceTypes.sort((a, b) => a.localeCompare(b, "pt-BR"));
+      }
+
+      saveStorage();
+      renderPieceTypeOptions();
+      updateTribunalFilterOptions();
+      renderHome();
+      renderTasks();
+      renderCalendar();
+      statusEl.textContent = `Importação concluída com sucesso! ${added} novo(s) registro(s) adicionado(s).`;
+      input.value = "";
+    } catch (err) {
+      statusEl.textContent = "Erro ao processar o arquivo JSON.";
+    }
+  };
+  reader.readAsText(file, "utf-8");
+}
+
+function clearAllData() {
+  if (!confirm("ATENÇÃO: Deseja apagar permanentemente todos os dados e prazos armazenados?")) return;
+  if (!confirm("Confirmação final: Esta ação não poderá ser desfeita.")) return;
+  tasks = [];
+  reminders = [];
+  pieceTypes = defaultTypes.slice();
+  saveStorage();
+  renderPieceTypeOptions();
+  updateTribunalFilterOptions();
+  renderHome();
+  renderTasks();
+  renderCompletedTasks();
+  renderReminders();
+  renderCalendar();
+  alert("Todos os dados foram limpos.");
+}
+
+function acceptTerms() {
+  localStorage.setItem(STORAGE_KEYS.TERMS, "true");
+  navigate(null, 'home');
+}
+
+/* Init */
+function init() {
+  loadStorage();
+
+  renderPieceTypeOptions();
+  updateTribunalFilterOptions();
+  renderHome();
+  renderTasks();
+  renderReminders();
+  renderCalendar();
+  updateNotificationButtonUI();
+
+  const form = document.getElementById("task-form");
+  if (form) form.addEventListener("submit", handleFormSubmit);
+
+  const searchInput = document.getElementById("search-input");
+  if (searchInput) {
+    let tmr = null;
+    searchInput.addEventListener("input", e => {
+      clearTimeout(tmr);
+      tmr = setTimeout(() => {
+        state.currentSearch = e.target.value;
+        state.currentPage = 1;
+        renderTasks();
+      }, 150);
+    });
+  }
+
+  const termsAccepted = localStorage.getItem(STORAGE_KEYS.TERMS) === "true";
+  if (!termsAccepted) {
+    navigate(null, 'terms');
+  } else {
+    navigate(null, 'home');
+  }
+}
+
+window.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>
