@@ -12,7 +12,7 @@ Aplicativo web estático publicado pelo GitHub Pages.
 - Tarefas, prazos, lembretes e tipos de peças são separados por usuário no armazenamento local do navegador.
 - O administrador não recebe automaticamente acesso aos registros particulares dos demais usuários.
 - O proprietário pode compartilhar tarefas e lembretes com permissão de visualização ou edição, podendo alterar ou revogar o compartilhamento.
-- Compartilhamento disponível somente entre contas no mesmo navegador e perfil do dispositivo.
+- O compartilhamento local de lembretes permanece restrito ao mesmo navegador; a Central ZEN sincroniza tarefas compartilhadas entre computadores autorizados. Lembretes e registros particulares não são sincronizados em tempo real, mas podem integrar backups criptografados individuais.
 
 ## Central compartilhada e armazenamento
 
