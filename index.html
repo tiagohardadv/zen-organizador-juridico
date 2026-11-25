@@ -882,10 +882,13 @@
       <section id="reports" class="card hidden">
         <h2>
           Central de Relatórios Detalhados
-          <button class="btn btn-ghost" onclick="printReport()">
-            <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-            Imprimir Relatório
-          </button>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-ghost" onclick="exportReportCSV()">Exportar CSV</button>
+            <button class="btn btn-ghost" onclick="printReport()">
+              <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+              Imprimir
+            </button>
+          </div>
         </h2>
         <div id="report-form" style="background: var(--surface-subtle); padding: 14px; border-radius: 6px; margin-bottom: 16px;">
           <form style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; align-items: end;" onsubmit="generateReport(event)">
@@ -2226,6 +2229,13 @@ function generateReport(e) {
   }
 }
 
+function exportReportCSV(){
+  const table=document.querySelector("#report-results-container table");
+  if(!table)return alert("Gere um relatório antes de exportar.");
+  const rows=[...table.querySelectorAll("tr")].map(tr=>[...tr.querySelectorAll("th,td")].map(td=>'"'+String(td.innerText||"").replace(/"/g,'""').replace(/\s+/g," ").trim()+'"').join(";"));
+  const blob=new Blob(["\uFEFF"+rows.join("\r\n")],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="zen-relatorio-"+new Date().toISOString().slice(0,10)+".csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
 function printReport() {
   window.print();
 }
