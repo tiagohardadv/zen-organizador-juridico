@@ -8,7 +8,7 @@ Aplicativo web estático publicado pelo GitHub Pages.
 - Primeiro acesso: criação da conta administradora.
 - O administrador pode criar usuários, alterar nome/perfil, ativar/desativar contas e redefinir senhas.
 - Senhas derivadas com PBKDF2 (SHA-256), salt individual e 310.000 iterações.
-- A sessão existe apenas em memória; ao recarregar ou fechar o aplicativo, será necessário entrar novamente.
+- A sessão é mantida no armazenamento local do perfil do navegador até o usuário clicar em “Deslogar”; não equivale a uma sessão autenticada por servidor.
 - Tarefas, prazos, lembretes e tipos de peças são separados por usuário no armazenamento local do navegador.
 - O administrador não recebe automaticamente acesso aos registros particulares dos demais usuários.
 - O proprietário pode compartilhar tarefas e lembretes com permissão de visualização ou edição, podendo alterar ou revogar o compartilhamento.
