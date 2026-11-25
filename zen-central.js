@@ -96,7 +96,6 @@
       if (existing && existing.centralId) {
         if (!confirm("Esta pasta já contém uma Central ZEN (" + existing.centralId + "). Deseja apenas reconectar?")) return;
         directory = root;
-        await saveHandle(root, null);
         await ensureLocalDeviceIdentity(existing);
         renderStatus("Central existente reconhecida: " + existing.centralId);
         return;
@@ -383,7 +382,23 @@
     if(received)window.dispatchEvent(new CustomEvent("zen-central-updated",{detail:{received}}));return {received};
   }
   function getSharedTasks(userId){if(!userId)return [];return Object.values(taskCache().entries||{}).filter(x=>!x.deleted&&x.record&&Array.isArray(x.targetUserIds)&&x.targetUserIds.includes(userId)).map(x=>({...x.record,_sharedOwnerId:x.ownerUserId,_sharedOwnerName:x.ownerName||"Usuário",_sharedPermission:"view",_centralRemote:true}));}
-  function startBackgroundSync(){if(window.__ZEN_CENTRAL_SYNC_TIMER)return;const run=async()=>{try{await syncNow();}catch(e){console.warn("ZEN Central sync:",e);}};run();window.__ZEN_CENTRAL_SYNC_TIMER=setInterval(run,10000);}
+  function startBackgroundSync(){
+    if(window.__ZEN_CENTRAL_SYNC_TIMER)return;
+    const run=async()=>{
+      try{
+        const saved=await loadHandle();
+        if(saved&&saved.handle&&!saved.deviceId&&isAdmin()){
+          directory=saved.handle;
+          const manifest=await readJson(await directory.getDirectoryHandle("CENTRAL"),"identificacao.json");
+          await ensureLocalDeviceIdentity(manifest);
+        }
+        if(typeof tasks!=="undefined"&&Array.isArray(tasks))await publishTasks(tasks.filter(t=>!t._sharedOwnerId));
+        await syncNow();
+      }catch(e){console.warn("ZEN Central sync:",e);}
+    };
+    run();
+    window.__ZEN_CENTRAL_SYNC_TIMER=setInterval(run,10000);
+  }
 
   function renderStatus(message) {
     const el = document.getElementById("zen-central-status");
