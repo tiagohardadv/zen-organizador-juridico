@@ -87,7 +87,9 @@
   async function setupCentral() {
     if (!isAdmin()) throw new Error("Somente o administrador pode configurar a Central ZEN.");
     if (!window.showDirectoryPicker) throw new Error("Este navegador não oferece seleção de pastas compatível. Utilize Chrome ou Edge atualizado.");
-    const root = await window.showDirectoryPicker({ id: "zen-central-root", mode: "readwrite" });
+    alert("Selecione a pasta sincronizada do Google Drive onde o ZEN deverá criar a subpasta ZEN_CENTRAL.");
+    const parent = await window.showDirectoryPicker({ id: "zen-central-root", mode: "readwrite" });
+    const root = await parent.getDirectoryHandle(ROOT, { create: true });
     const central = await root.getDirectoryHandle("CENTRAL", { create: true });
     try {
       const existing = await readJson(central, "identificacao.json");
