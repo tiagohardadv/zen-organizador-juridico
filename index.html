@@ -1008,6 +1008,7 @@
     ZEN Organizador Jurídico — Desenvolvido por Tiago da Silva — Todos os direitos reservados.
   </footer>
 
+<script src="./auth.js"></script>
 <script>
 const STORAGE_KEYS = {
   TASKS: "zen_pro_tasks_v5",
@@ -1149,9 +1150,9 @@ document.addEventListener('click', function(e) {
 /* Storage & Theme */
 function loadStorage() {
   try {
-    tasks = JSON.parse(localStorage.getItem(STORAGE_KEYS.TASKS)) || [];
-    reminders = JSON.parse(localStorage.getItem(STORAGE_KEYS.REMINDERS)) || [];
-    pieceTypes = JSON.parse(localStorage.getItem(STORAGE_KEYS.TIPOS)) || defaultTypes.slice();
+    tasks = JSON.parse(localStorage.getItem(ZEN_AUTH.key("tasks"))) || [];
+    reminders = JSON.parse(localStorage.getItem(ZEN_AUTH.key("reminders"))) || [];
+    pieceTypes = JSON.parse(localStorage.getItem(ZEN_AUTH.key("types"))) || defaultTypes.slice();
     const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME) || "corporate_blue";
     const sel = document.getElementById("theme-selector");
     if (sel) sel.value = savedTheme;
@@ -1165,9 +1166,9 @@ function loadStorage() {
 
 function saveStorage() {
   try {
-    localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
-    localStorage.setItem(STORAGE_KEYS.REMINDERS, JSON.stringify(reminders));
-    localStorage.setItem(STORAGE_KEYS.TIPOS, JSON.stringify(pieceTypes));
+    localStorage.setItem(ZEN_AUTH.key("tasks"), JSON.stringify(tasks));
+    localStorage.setItem(ZEN_AUTH.key("reminders"), JSON.stringify(reminders));
+    localStorage.setItem(ZEN_AUTH.key("types"), JSON.stringify(pieceTypes));
   } catch (e) {
     console.error("Erro ao salvar storage:", e);
   }
@@ -2407,7 +2408,7 @@ function init() {
   }
 }
 
-window.addEventListener("DOMContentLoaded", init);
+window.addEventListener("DOMContentLoaded", () => ZEN_AUTH.boot(init));
 </script>
 </body>
 </html>
