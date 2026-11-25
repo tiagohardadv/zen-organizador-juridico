@@ -1051,7 +1051,7 @@
     ZEN Organizador Jurídico — Desenvolvido por Tiago da Silva — Todos os direitos reservados.
   </footer>
 
-<script src="./auth.js?v=20261125-5"></script>
+<script src="./auth.js?v=20261125-6"></script>
 <script src="./backup-security.js?v=20261125-1"></script>
 <script>
 const STORAGE_KEYS = {
@@ -2710,7 +2710,7 @@ function init() {
 
   const u=ZEN_AUTH.getCurrentUser(),accepted=u&&localStorage.getItem("zen_terms_accept_v1_"+u.id)==="accepted";
   const chk=document.getElementById("terms-consent-check"),btn=document.getElementById("terms-accept-button");if(chk&&btn)chk.addEventListener("change",()=>btn.disabled=!chk.checked);
-  if(!accepted){document.querySelectorAll(".sidebar .nav-item").forEach(x=>{if(x.dataset.target!=="terms")x.classList.add("hidden");});navigate(null,"terms");}else { navigate(null,"home"); startAutomaticNotifications(); }
+  if(!accepted){document.querySelectorAll(".sidebar .nav-item").forEach(x=>{if(x.dataset.target!=="terms")x.classList.add("hidden");});navigate(null,"terms");}else { navigate(null,"home"); startAutomaticNotifications(ZEN_AUTH.wasExplicitLogin()); }
   refreshAdminMenu();populateCompletedFilters();bindExtraFilters();
   const repTrib=document.getElementById("rep-tribunal");if(repTrib){const values=[...new Set(tasks.map(t=>(t.tribunal||"").trim()).filter(Boolean))].sort();values.forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;repTrib.appendChild(o);});}
   zenLog("login","Acesso ao ZEN");
