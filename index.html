@@ -953,6 +953,17 @@
           </div>
           <p style="margin:9px 0 0;font-size:.75rem;color:var(--text-muted);">O ZEN mantém até 7 versões diárias no armazenamento local do navegador. A cópia automática é atualizada ao salvar alterações e ao abrir o sistema. Ela não substitui a exportação de arquivos para outro dispositivo.</p>
         </div>
+        <div class="card" style="margin:12px 0;padding:14px;border:1px solid var(--border);">
+          <h3 style="margin:0 0 8px;font-size:1rem;">Backup automático em pasta do computador</h3>
+          <p id="zen-external-backup-status" style="margin:0 0 8px;font-size:.84rem;color:var(--text-muted);">Verificando pasta externa...</p>
+          <p id="zen-external-backup-warning" class="hidden" role="status" style="margin:0 0 10px;color:var(--danger);font-size:.84rem;font-weight:600;"></p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary" type="button" onclick="ZEN_EXTERNAL_BACKUP.chooseFolder()">📁 Escolher pasta e ativar</button>
+            <button class="btn btn-ghost" type="button" onclick="ZEN_EXTERNAL_BACKUP.unlock()">🔓 Desbloquear / autorizar pasta</button>
+            <button class="btn btn-ghost" type="button" onclick="ZEN_EXTERNAL_BACKUP.test()">Testar backup</button>
+          </div>
+          <p style="margin:9px 0 0;font-size:.75rem;color:var(--text-muted);">Os arquivos são criptografados (.zen) com AES-256-GCM. A senha é solicitada ao configurar e novamente quando necessário, permanece somente na memória desta sessão e nunca é salva. O ZEN atualiza o arquivo do dia ao salvar alterações e mantém até 7 arquivos diários próprios. Requer Chrome ou Edge atualizado no computador; o navegador precisa permanecer aberto. Guarde a senha em local seguro.</p>
+        </div>
         <div style="display: flex; flex-direction: column; gap: 14px;">
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <button class="btn btn-primary" onclick="exportJSON()">📥 Baixar Backup Completo (.json)</button>
@@ -1049,6 +1060,7 @@
 <script src="./auth.js?v=20261125-7"></script>
 <script src="./backup-security.js?v=20261125-1"></script>
 <script src="./local-backup.js?v=20261125-2"></script>
+<script src="./external-backup.js?v=20261125-1"></script>
 <script>
 const STORAGE_KEYS = {
   TASKS: "zen_pro_tasks_v5",
@@ -1301,6 +1313,7 @@ function saveStorage() {
       }
     });
     if (window.ZEN_LOCAL_BACKUP) window.ZEN_LOCAL_BACKUP.capture("alteracao");
+    if (window.ZEN_EXTERNAL_BACKUP) window.ZEN_EXTERNAL_BACKUP.capture();
   } catch (e) {
     console.error("Erro ao salvar storage:", e);
   }
@@ -2676,6 +2689,11 @@ function acceptTerms(){const u=ZEN_AUTH.getCurrentUser(),c=document.getElementBy
 function init() {
   loadStorage();
   const backupUser = ZEN_AUTH.getCurrentUser();
+  if (backupUser && window.ZEN_EXTERNAL_BACKUP) {
+    window.ZEN_EXTERNAL_BACKUP.start(backupUser.id,
+      () => ({tasks:tasks.filter(isRecordOwner),reminders:reminders.filter(isRecordOwner),pieceTypes:pieceTypes.slice()})
+    );
+  }
   if (backupUser && window.ZEN_LOCAL_BACKUP) {
     window.ZEN_LOCAL_BACKUP.start(backupUser.id,
       () => ({tasks:tasks.filter(isRecordOwner),reminders:reminders.filter(isRecordOwner),pieceTypes:pieceTypes.slice()}),
