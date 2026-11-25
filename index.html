@@ -944,25 +944,9 @@
       <section id="export" class="card hidden">
         <h2>Backup, Exportação e Importação de Dados</h2>
         <div class="card" style="margin:12px 0;padding:14px;border:1px solid var(--border);">
-          <h3 style="margin:0 0 8px;font-size:1rem;">Proteção automática neste navegador</h3>
-          <p id="zen-local-backup-status" style="margin:0 0 8px;font-size:.84rem;color:var(--text-muted);">Consultando cópias locais...</p>
-          <p id="zen-local-backup-warning" class="hidden" role="status" style="margin:0 0 10px;color:var(--danger);font-size:.84rem;font-weight:600;"></p>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="btn btn-primary" type="button" onclick="ZEN_LOCAL_BACKUP.capture('manual')">Criar backup local agora</button>
-            <button class="btn btn-ghost" type="button" id="zen-local-restore-btn" onclick="ZEN_LOCAL_BACKUP.restoreLatest()" disabled>Restaurar última cópia local</button>
-          </div>
-          <p style="margin:9px 0 0;font-size:.75rem;color:var(--text-muted);">O ZEN mantém até 7 versões diárias no armazenamento local do navegador. A cópia automática é atualizada ao salvar alterações e ao abrir o sistema. Ela não substitui a exportação de arquivos para outro dispositivo.</p>
-        </div>
-        <div class="card" style="margin:12px 0;padding:14px;border:1px solid var(--border);">
-          <h3 style="margin:0 0 8px;font-size:1rem;">Backup automático em pasta do computador</h3>
-          <p id="zen-external-backup-status" style="margin:0 0 8px;font-size:.84rem;color:var(--text-muted);">Verificando pasta externa...</p>
-          <p id="zen-external-backup-warning" class="hidden" role="status" style="margin:0 0 10px;color:var(--danger);font-size:.84rem;font-weight:600;"></p>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="btn btn-primary" type="button" onclick="ZEN_EXTERNAL_BACKUP.chooseFolder()">📁 Escolher pasta e ativar</button>
-            <button class="btn btn-ghost" type="button" onclick="ZEN_EXTERNAL_BACKUP.unlock()">🔓 Desbloquear / autorizar pasta</button>
-            <button class="btn btn-ghost" type="button" onclick="ZEN_EXTERNAL_BACKUP.test()">Testar backup</button>
-          </div>
-          <p style="margin:9px 0 0;font-size:.75rem;color:var(--text-muted);">Os arquivos são criptografados (.zen) com AES-256-GCM. A senha é solicitada ao configurar e novamente quando necessário, permanece somente na memória desta sessão e nunca é salva. O ZEN atualiza o arquivo do dia ao salvar alterações e mantém até 7 arquivos diários próprios. Requer Chrome ou Edge atualizado no computador; o navegador precisa permanecer aberto. Guarde a senha em local seguro.</p>
+          <h3 style="margin:0 0 8px;font-size:1rem;">Backup automático pela Central ZEN</h3>
+          <p style="margin:0 0 10px;font-size:.84rem;color:var(--text-muted);">Os backups criptografados são armazenados na pasta compartilhada da Central ZEN, separados por usuário e computador. Para ativar, desbloquear ou restaurar cópias, abra a Central ZEN no cabeçalho.</p>
+          <button class="btn btn-primary" type="button" onclick="document.getElementById('zen-central-entry')?.click()">☁ Abrir backups da Central ZEN</button>
         </div>
         <div style="display: flex; flex-direction: column; gap: 14px;">
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -1064,8 +1048,6 @@
 
 <script src="./auth.js?v=20261125-7"></script>
 <script src="./backup-security.js?v=20261125-1"></script>
-<script src="./local-backup.js?v=20261125-2"></script>
-<script src="./external-backup.js?v=20261125-1"></script>
 <script>
 const STORAGE_KEYS = {
   TASKS: "zen_pro_tasks_v5",
@@ -1360,8 +1342,7 @@ function saveStorage() {
         ZEN_CENTRAL.submitTaskEdit(shared).then(sent => { if (sent) showToast("Solicitação de edição enviada ao computador proprietário."); }).catch(e => { console.warn("ZEN Central: falha ao enviar solicitação de edição.", e); showToast(e.message || "Não foi possível enviar a edição."); });
       });
     }
-    if (window.ZEN_LOCAL_BACKUP) window.ZEN_LOCAL_BACKUP.capture("alteracao");
-    if (window.ZEN_EXTERNAL_BACKUP) window.ZEN_EXTERNAL_BACKUP.capture();
+    if (window.ZEN_CENTRAL && ZEN_CENTRAL.captureBackup) ZEN_CENTRAL.captureBackup("alteracao").catch(e => console.warn("ZEN Central: falha no backup automático.", e));
   } catch (e) {
     console.error("Erro ao salvar storage:", e);
   }
@@ -2770,19 +2751,9 @@ function init() {
     ZEN_CENTRAL.publishTasks(tasks.filter(isRecordOwner)).catch(error => console.warn("ZEN Central: publicação inicial pendente.", error));
   }
   const backupUser = ZEN_AUTH.getCurrentUser();
-  if (backupUser && window.ZEN_EXTERNAL_BACKUP) {
-    window.ZEN_EXTERNAL_BACKUP.start(backupUser.id,
+  if (backupUser && window.ZEN_CENTRAL && ZEN_CENTRAL.startCentralBackup) {
+    ZEN_CENTRAL.startCentralBackup(
       () => ({tasks:tasks.filter(isRecordOwner),reminders:reminders.filter(isRecordOwner),pieceTypes:pieceTypes.slice()})
-    );
-  }
-  if (backupUser && window.ZEN_LOCAL_BACKUP) {
-    window.ZEN_LOCAL_BACKUP.start(backupUser.id,
-      () => ({tasks:tasks.filter(isRecordOwner),reminders:reminders.filter(isRecordOwner),pieceTypes:pieceTypes.slice()}),
-      async data => {
-        if (!data || !Array.isArray(data.tasks) || !Array.isArray(data.reminders) || !Array.isArray(data.pieceTypes)) throw new Error("Conteúdo da cópia local inválido.");
-        tasks=data.tasks;reminders=data.reminders;pieceTypes=data.pieceTypes;saveStorage();
-        renderPieceTypeOptions();updateTribunalFilterOptions();renderHome();renderTasks();renderCompletedTasks();renderReminders();renderCalendar();
-      }
     );
   }
 
@@ -2826,6 +2797,6 @@ function init() {
 window.addEventListener("zen-central-updated", () => { loadStorage(); renderTasks(); renderHome(); renderCalendar(); });
 window.addEventListener("DOMContentLoaded", () => ZEN_AUTH.boot(init));
 </script>
-  <script src="./zen-central.js?v=20261125-12"></script>
+  <script src="./zen-central.js?v=20261125-13"></script>
 </body>
 </html>
