@@ -46,3 +46,18 @@ O site é servido pelo GitHub Pages a partir da branch main. O arquivo principal
 ## Restaurar backup de pasta sincronizada
 
 Na área “Backup & Dados”, o botão “Restaurar backup de pasta sincronizada” abre o seletor de arquivos do computador para escolher um arquivo .zen salvo em uma pasta sincronizada pelo Google Drive para computador, OneDrive, Dropbox ou outro serviço equivalente. O ZEN não usa API desses serviços, não acessa a conta online e não pesquisa arquivos na nuvem. A pasta precisa estar disponível no computador (ou o arquivo precisa ser baixado previamente). Após selecionar o arquivo, informe a senha; o conteúdo é descriptografado e passa pela confirmação e pelo fluxo de importação já existente, que **mescla** os registros com os dados atuais e evita duplicar IDs existentes. Não substitui nem apaga automaticamente a base atual.
+
+
+## Central ZEN — fundação experimental
+
+O módulo `zen-central.js` inicia a estrutura da central compartilhada em uma pasta local sincronizada pelo Google Drive para computador. O administrador seleciona a pasta sincronizada; o ZEN cria nela a subpasta `ZEN_CENTRAL`, com diretórios para administração, solicitações de dispositivos, operações, dados, histórico, conflitos e backups.
+
+Nesta primeira etapa estão disponíveis:
+- criação do manifesto e das configurações iniciais da central;
+- reconexão à pasta central pelo seletor de diretórios;
+- emissão de convites de ativação de uso único, válidos por 24 horas;
+- solicitação de ativação por um computador que já tenha acesso à pasta compartilhada;
+- geração de par de chaves ECDSA P-256 por dispositivo e prova criptográfica da solicitação;
+- análise e aprovação administrativa de solicitações, com cadastro do dispositivo autorizado.
+
+O módulo é uma fundação e **não sincroniza tarefas, lembretes, usuários ou permissões entre computadores nesta etapa**. O login e os registros atuais continuam locais no navegador. Não migre dados reais nem considere a central pronta para produção. O controle administrativo na interface não substitui as permissões do Google Drive: quem possui acesso direto de edição à pasta pode modificar ou excluir arquivos manualmente. A sincronização de arquivos pelo Drive pode atrasar ou entregar arquivos em ordens diferentes; a próxima etapa deverá implementar protocolo de operações, idempotência, validação e recuperação antes de conectar os dados jurídicos.
