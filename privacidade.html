@@ -39,7 +39,7 @@
     <article>
       <p>Esta Política de Privacidade explica como funciona o tratamento de informações no <strong>ZEN — Organizador Jurídico</strong> (“ZEN” ou “aplicativo”). O objetivo do aplicativo é auxiliar na organização de prazos, tarefas, lembretes e registros relacionados à atividade jurídica.</p>
 
-      <div class="notice"><strong>Como funciona atualmente:</strong> os registros criados no ZEN ficam armazenados no armazenamento local do navegador utilizado. A versão atualmente publicada não possui sincronização automática com o Google Drive nem envia o conteúdo dos registros para um servidor do ZEN.</div>
+      <div class="notice"><strong>Como funciona atualmente:</strong> o ZEN utiliza contas e senhas locais, com dados armazenados no navegador. Não há sincronização com Google Drive nem envio de registros ou credenciais a um servidor do ZEN. O compartilhamento entre usuários funciona apenas dentro do mesmo navegador e perfil do dispositivo.</div>
 
       <h2>1. Quem é responsável pelos dados?</h2>
       <p>O ZEN é uma ferramenta de organização. Na versão atual, o conteúdo inserido pelo usuário permanece no próprio navegador e sob seu controle. O usuário que registra informações de clientes, processos ou terceiros é responsável por definir a finalidade e a legitimidade desse tratamento, bem como por observar os deveres legais e profissionais aplicáveis, inclusive o sigilo profissional.</p>
@@ -59,7 +59,7 @@
       <p>Na versão atual, os registros de tarefas, prazos, lembretes e tipos de peças são mantidos no <strong>armazenamento local (localStorage) do navegador</strong>. Isso significa que os dados ficam vinculados ao navegador e ao perfil de usuário do dispositivo em que foram cadastrados. Eles não são automaticamente compartilhados entre computadores ou navegadores diferentes.</p>
       <p>Limpar os dados do navegador, utilizar uma janela ou perfil diferente, desinstalar o navegador ou ocorrer falha no dispositivo pode ocasionar perda dos registros. Por isso, recomenda-se realizar cópias de segurança periódicas por meio dos recursos de exportação e guardar os arquivos de backup em local protegido.</p>
 
-      <h2>4. Backup e compartilhamento de informações</h2>
+      <p>O ZEN permite criar contas locais com nome de usuário e senha. As senhas são processadas por derivação criptográfica PBKDF2 com salt individual; o aplicativo não armazena a senha em texto simples nem a transmite a um servidor. Os dados de cada conta são separados no armazenamento local do navegador. O usuário administrador pode criar, ativar, desativar e redefinir contas.</p><p>O titular de um registro pode compartilhá-lo com outro usuário do ZEN, concedendo visualização ou edição e revogando essa permissão. Esse compartilhamento é limitado às contas cadastradas no mesmo navegador e perfil do dispositivo; não constitui sincronização entre computadores. O controle de acesso por senha não criptografa o conteúdo do localStorage e não impede que alguém com acesso técnico ao perfil do navegador examine os dados.</p><h2>4. Backup e compartilhamento de informações</h2>
       <p>O ZEN permite exportar registros para arquivos de backup em formato JSON e importar arquivos compatíveis. A exportação é iniciada pelo próprio usuário e o arquivo é salvo no dispositivo conforme as configurações do navegador. O usuário decide onde armazená-lo e com quem eventualmente compartilhá-lo.</p>
       <p>Os arquivos de backup podem conter dados pessoais, informações de clientes e dados processuais. Eles devem ser protegidos contra acesso não autorizado, não devem ser enviados a repositórios públicos e só devem ser compartilhados quando houver autorização e finalidade legítima.</p>
 
@@ -70,9 +70,7 @@
       <h2>6. Notificações do navegador</h2>
       <p>Se o usuário optar por ativar os alertas, o ZEN poderá solicitar permissão para utilizar a funcionalidade de notificações do navegador. A autorização é controlada pelo usuário nas configurações do navegador ou do dispositivo. O usuário pode revogá-la a qualquer momento.</p>
 
-      <h2>7. Integração com Google Drive</h2>
-      <p>A sincronização com o Google Drive está em fase de configuração e <strong>não está habilitada na versão atualmente publicada</strong>. Antes de disponibilizar essa funcionalidade, esta Política será atualizada para informar de forma específica quais dados serão sincronizados, como ocorrerá a autorização pela conta Google, quais permissões serão solicitadas, como os tokens serão protegidos e como o usuário poderá desconectar a integração e excluir os arquivos armazenados no Drive.</p>
-      <p>Até que essa atualização seja publicada e a funcionalidade seja efetivamente disponibilizada, não considere que exista cópia automática dos dados na nuvem.</p>
+      <h2>7. Integração com Google Drive</h2><p>O projeto não utiliza integração com Google Drive para armazenamento ou sincronização de dados. A autenticação do ZEN é local e não depende de autorização Google. Não existe cópia automática dos registros na nuvem.</p>
 
       <h2>8. Segurança e retenção</h2>
       <p>Como os registros ficam no navegador, a segurança também depende das medidas adotadas pelo usuário: proteger o dispositivo com senha, manter o sistema e o navegador atualizados, utilizar perfil individual, evitar computadores públicos e manter backups em local seguro. Os dados permanecem no armazenamento local até que sejam apagados pelo usuário ou removidos em razão de limpeza, falha ou outra ação no dispositivo ou navegador.</p>
