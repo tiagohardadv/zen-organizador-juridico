@@ -953,7 +953,7 @@
       <section id="about" class="card hidden">
         <h2>Sobre o ZEN Jurídico</h2>
         <p><strong>ZEN — Organizador Jurídico</strong> é uma ferramenta desenvolvida para o controle de prazos processuais, intimações e diligências.</p>
-        <p>Desenvolvido por <strong>Tiago da Silva</strong>. Os dados são armazenados exclusivamente de forma local no seu navegador (localStorage), garantindo segurança e sigilo profissional.</p>
+        <p>Desenvolvido por <strong>Tiago da Silva</strong>. Os dados são armazenados exclusivamente de forma local no seu navegador (localStorage), mantendo os registros no dispositivo. O controle por senha não substitui a proteção do próprio computador e do perfil do navegador.</p>
       </section>
 
       <!-- TERMOS -->
@@ -1188,7 +1188,7 @@ function canDeleteRecord(record) { return isRecordOwner(record); }
 function manageSharing(kind, id) {
   const collection = kind === "task" ? tasks : reminders;
   const record = collection.find(item => item.id === id);
-  if (!record || !isRecordOwner(record) || !ZEN_AUTH.isAdmin() && !ZEN_AUTH.getCurrentUser()) {
+  if (!record || !isRecordOwner(record)) {
     if (!record || !isRecordOwner(record)) alert("Somente o proprietário pode gerenciar o compartilhamento.");
     return;
   }
