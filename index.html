@@ -1181,6 +1181,8 @@ function loadStorage() {
     tasks = JSON.parse(localStorage.getItem(ZEN_AUTH.key("tasks"))) || [];
     reminders = JSON.parse(localStorage.getItem(ZEN_AUTH.key("reminders"))) || [];
     pieceTypes = JSON.parse(localStorage.getItem(ZEN_AUTH.key("types"))) || defaultTypes.slice();
+    const globalPieceTypes = JSON.parse(localStorage.getItem("zen_global_piece_types_v1") || "null");
+    if (Array.isArray(globalPieceTypes) && globalPieceTypes.length) pieceTypes = globalPieceTypes;
 
     // Carrega registros que outros usuários compartilharam com esta conta.
     const currentUser = ZEN_AUTH.getCurrentUser();
@@ -1276,6 +1278,7 @@ function saveStorage() {
     localStorage.setItem(ZEN_AUTH.key("tasks"), JSON.stringify(ownTasks));
     localStorage.setItem(ZEN_AUTH.key("reminders"), JSON.stringify(ownReminders));
     localStorage.setItem(ZEN_AUTH.key("types"), JSON.stringify(pieceTypes));
+    if (ZEN_AUTH.isAdmin()) localStorage.setItem("zen_global_piece_types_v1", JSON.stringify(pieceTypes));
 
     // Usuários com permissão de edição gravam alterações no registro do proprietário.
     tasks.filter(t => t._sharedOwnerId && canEditRecord(t)).forEach(shared => {
@@ -2522,7 +2525,7 @@ function importJSON() {
         addedReminders++;
       });
 
-      if (Array.isArray(data.pieceTypes)) {
+      if (Array.isArray(data.pieceTypes) && ZEN_AUTH.isAdmin()) {
         data.pieceTypes.forEach(pt => {
           if (typeof pt === "string" && pt.trim() && pt.length <= 120 && !pieceTypes.includes(pt.trim())) pieceTypes.push(pt.trim());
         });
