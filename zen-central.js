@@ -402,6 +402,7 @@
   function startBackgroundSync(){
     if(window.__ZEN_CENTRAL_SYNC_TIMER)return;
     const run=async()=>{
+      if(!current())return;
       try{
         const saved=await loadHandle();
         if(saved&&saved.handle&&!saved.deviceId&&isAdmin()){
@@ -488,7 +489,7 @@
   else boot();
   const watcher = setInterval(() => {
     const user = current();
-    if (user && (!currentUser || currentUser.id !== user.id)) { currentUser = user; mount(); }
+    if (user && (!currentUser || currentUser.id !== user.id)) { currentUser = user; mount(); startBackgroundSync(); }
     if (!user) { currentUser = null; const b = document.getElementById("zen-central-entry"); if (b) b.remove(); }
   }, 1200);
   window.ZEN_CENTRAL = {
