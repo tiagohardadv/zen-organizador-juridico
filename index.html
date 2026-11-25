@@ -1214,6 +1214,8 @@ function loadStorage() {
           reminders.push({ ...r, _sharedOwnerId: owner.id, _sharedPermission: share.permission, _sharedOwnerName: owner.name });
         });
     });
+    const centralUser = ZEN_AUTH.getCurrentUser();
+    if (centralUser && window.ZEN_CENTRAL && ZEN_CENTRAL.getSharedTasks) tasks.push(...ZEN_CENTRAL.getSharedTasks(centralUser.id));
     const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME) || "corporate_blue";
     const sel = document.getElementById("theme-selector");
     if (sel) sel.value = savedTheme;
@@ -1228,6 +1230,7 @@ function loadStorage() {
 function isRecordOwner(record) { return !!record && !record._sharedOwnerId; }
 function canEditRecord(record) {
   if (!record) return false;
+  if (record._centralRemote) return false;
   if (isRecordOwner(record)) return true;
   const me = ZEN_AUTH.getCurrentUser();
   if (!me || !record._sharedOwnerId) return false;
@@ -1241,6 +1244,7 @@ function canEditRecord(record) {
 function canDeleteRecord(record) { return isRecordOwner(record); }
 function canViewSharedRecord(record) {
   const me = ZEN_AUTH.getCurrentUser();
+  if (record && record._centralRemote) return !!me;
   if (!me || !record || !record._sharedOwnerId) return false;
   try {
     const isTask = tasks.includes(record);
@@ -1317,6 +1321,7 @@ function saveStorage() {
         localStorage.setItem(key, JSON.stringify(ownerItems));
       }
     });
+    if (window.ZEN_CENTRAL && ZEN_CENTRAL.publishTasks) ZEN_CENTRAL.publishTasks(ownTasks).catch(e => console.warn("ZEN Central: falha ao publicar tarefas.", e));
     if (window.ZEN_LOCAL_BACKUP) window.ZEN_LOCAL_BACKUP.capture("alteracao");
     if (window.ZEN_EXTERNAL_BACKUP) window.ZEN_EXTERNAL_BACKUP.capture();
   } catch (e) {
@@ -2777,8 +2782,9 @@ function init() {
   zenLog("login","Acesso ao ZEN");
 }
 
+window.addEventListener("zen-central-updated", () => { loadStorage(); renderTasks(); renderHome(); renderCalendar(); });
 window.addEventListener("DOMContentLoaded", () => ZEN_AUTH.boot(init));
 </script>
-  <script src="./zen-central.js?v=20261125-5"></script>
+  <script src="./zen-central.js?v=20261125-6"></script>
 </body>
 </html>
