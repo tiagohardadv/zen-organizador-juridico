@@ -935,12 +935,18 @@
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <button class="btn btn-primary" onclick="exportJSON()">📥 Baixar Backup Completo (.json)</button>
             <button class="btn btn-ghost" onclick="exportCompletedJSON()">📥 Baixar Apenas Cumpridas (.json)</button>
+            <button class="btn btn-ghost" onclick="exportEncryptedBackup()">🔐 Baixar Backup Criptografado (.zen)</button>
           </div>
           <hr style="border: 0; border-top: 1px solid var(--border);" />
           <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
             <input id="file-import" type="file" accept="application/json" style="flex: 1; min-width: 240px;" />
-            <button class="btn btn-primary" onclick="importJSON()">📤 Importar e Mesclar</button>
+            <button class="btn btn-primary" onclick="importJSON()">📤 Importar JSON e Mesclar</button>
           </div>
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <input id="file-import-encrypted" type="file" accept=".zen,application/json" style="flex: 1; min-width: 240px;" />
+            <button class="btn btn-primary" onclick="importEncryptedBackup()">🔓 Abrir Backup Criptografado</button>
+          </div>
+          <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0;">O backup criptografado usa AES-256-GCM. A senha é definida na exportação e não fica salva no navegador. Se perder a senha, não será possível recuperar o conteúdo.</p>
           <div id="import-status" style="font-size: 0.82rem; color: var(--text-muted);"></div>
           <hr style="border: 0; border-top: 1px solid var(--border);" />
           <div>
@@ -1009,6 +1015,7 @@
   </footer>
 
 <script src="./auth.js?v=20261125-2"></script>
+<script src="./backup-security.js?v=20261125-1"></script>
 <script>
 const STORAGE_KEYS = {
   TASKS: "zen_pro_tasks_v5",
