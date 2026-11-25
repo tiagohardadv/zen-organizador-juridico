@@ -1182,8 +1182,29 @@ function loadStorage() {
 }
 
 function isRecordOwner(record) { return !!record && !record._sharedOwnerId; }
-function canEditRecord(record) { return isRecordOwner(record) || (record && record._sharedPermission === "edit"); }
+function canEditRecord(record) {
+  if (!record) return false;
+  if (isRecordOwner(record)) return true;
+  const me = ZEN_AUTH.getCurrentUser();
+  if (!me || !record._sharedOwnerId) return false;
+  try {
+    const ownerItems = JSON.parse(localStorage.getItem("zen_user_" + record._sharedOwnerId + "_" + (tasks.includes(record) ? "tasks" : "reminders")) || "[]");
+    const latest = ownerItems.find(item => item.id === record.id);
+    const grant = latest && Array.isArray(latest.sharedWith) ? latest.sharedWith.find(item => item.userId === me.id) : null;
+    return !!grant && grant.permission === "edit";
+  } catch (_) { return false; }
+}
 function canDeleteRecord(record) { return isRecordOwner(record); }
+function canViewSharedRecord(record) {
+  const me = ZEN_AUTH.getCurrentUser();
+  if (!me || !record || !record._sharedOwnerId) return false;
+  try {
+    const isTask = tasks.includes(record);
+    const ownerItems = JSON.parse(localStorage.getItem("zen_user_" + record._sharedOwnerId + "_" + (isTask ? "tasks" : "reminders")) || "[]");
+    const latest = ownerItems.find(item => item.id === record.id);
+    return !!latest && Array.isArray(latest.sharedWith) && latest.sharedWith.some(item => item.userId === me.id);
+  } catch (_) { return false; }
+}
 
 function manageSharing(kind, id) {
   const collection = kind === "task" ? tasks : reminders;
@@ -1229,7 +1250,7 @@ function saveStorage() {
     localStorage.setItem(ZEN_AUTH.key("types"), JSON.stringify(pieceTypes));
 
     // Usuários com permissão de edição gravam alterações no registro do proprietário.
-    tasks.filter(t => t._sharedOwnerId && t._sharedPermission === "edit").forEach(shared => {
+    tasks.filter(t => t._sharedOwnerId && canEditRecord(t)).forEach(shared => {
       const key = "zen_user_" + shared._sharedOwnerId + "_tasks";
       const ownerItems = JSON.parse(localStorage.getItem(key) || "[]");
       const index = ownerItems.findIndex(item => item.id === shared.id);
@@ -1240,7 +1261,7 @@ function saveStorage() {
         localStorage.setItem(key, JSON.stringify(ownerItems));
       }
     });
-    reminders.filter(r => r._sharedOwnerId && r._sharedPermission === "edit").forEach(shared => {
+    reminders.filter(r => r._sharedOwnerId && canEditRecord(r)).forEach(shared => {
       const key = "zen_user_" + shared._sharedOwnerId + "_reminders";
       const ownerItems = JSON.parse(localStorage.getItem(key) || "[]");
       const index = ownerItems.findIndex(item => item.id === shared.id);
@@ -1895,6 +1916,7 @@ function deleteReminder(id) {
 function openTaskDetail(id) {
   const t = tasks.find(item => item.id === id);
   if (!t) return;
+  if (t._sharedOwnerId && !canEditRecord(t) && !canViewSharedRecord(t)) { alert("O proprietário revogou seu acesso a este registro."); return; }
 
   document.getElementById("det-cliente").textContent = t.cliente || "-";
   document.getElementById("det-cliente").setAttribute("data-text", t.cliente || "");
