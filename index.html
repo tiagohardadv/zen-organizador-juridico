@@ -1843,6 +1843,14 @@ function closeReminderModal() {
 function handleReminderSubmit(e) {
   e.preventDefault();
   const id = document.getElementById("rem-id").value;
+  if (id) {
+    const existing = reminders.find(item => item.id === id);
+    if (!existing || !canEditRecord(existing)) {
+      alert("Você não tem mais permissão para editar este lembrete.");
+      closeReminderModal();
+      return;
+    }
+  }
   const titulo = document.getElementById("rem-titulo").value.trim();
   const cliente = document.getElementById("rem-cliente").value.trim();
   const processo = document.getElementById("rem-processo").value.trim();
@@ -2372,7 +2380,10 @@ function navigate(event, targetId) {
 
 /* Import / Export */
 function exportJSON() {
-  const data = { version: 5.0, exportDate: new Date().toISOString(), tasks, reminders, pieceTypes };
+  // O backup pertence à conta atual: registros compartilhados não são exportados como se fossem próprios.
+  const ownTasks = tasks.filter(t => isRecordOwner(t));
+  const ownReminders = reminders.filter(r => isRecordOwner(r));
+  const data = { version: 5.1, exportDate: new Date().toISOString(), tasks: ownTasks, reminders: ownReminders, pieceTypes };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -2383,8 +2394,8 @@ function exportJSON() {
 }
 
 function exportCompletedJSON() {
-  const completed = tasks.filter(t => t.status === STATUS.CONCLUIDO);
-  const data = { version: 5.0, exportDate: new Date().toISOString(), tasks: completed };
+  const completed = tasks.filter(t => isRecordOwner(t) && t.status === STATUS.CONCLUIDO);
+  const data = { version: 5.1, exportDate: new Date().toISOString(), tasks: completed };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -2407,48 +2418,69 @@ function importJSON() {
   reader.onload = function(e) {
     try {
       const data = JSON.parse(e.target.result);
-      if (!data || !Array.isArray(data.tasks)) {
+      if (!data || !Array.isArray(data.tasks) || data.tasks.length > 10000 ||
+          (data.reminders !== undefined && !Array.isArray(data.reminders)) ||
+          (data.pieceTypes !== undefined && !Array.isArray(data.pieceTypes))) {
         statusEl.textContent = "Arquivo JSON inválido ou incompatível.";
         return;
       }
-      if (!confirm(`O arquivo contém ${data.tasks.length} registro(s). Deseja mesclar com a base atual?`)) return;
+      if (!confirm(`O arquivo contém ${data.tasks.length} tarefa(s) e ${(data.reminders || []).length} lembrete(s). Deseja mesclar com a base atual?`)) return;
 
-      const existingIds = new Set(tasks.map(t => t.id));
+      const existingIds = new Set(tasks.filter(isRecordOwner).map(t => String(t.id)));
+      const existingRemIds = new Set(reminders.filter(isRecordOwner).map(r => String(r.id)));
       let added = 0;
+      let addedReminders = 0;
+      const cleanText = (value, max) => typeof value === "string" ? value.slice(0, max) : "";
       data.tasks.forEach(t => {
-        if (!t.id || !existingIds.has(t.id)) {
-          tasks.push({
-            id: t.id || (String(Date.now()) + "_" + Math.random().toString(16).slice(2)),
-            cliente: t.cliente || "",
-            telefone: t.telefone || "",
-            processo: t.processo || "",
-            tribunal: t.tribunal || "",
-            tipoPeca: t.tipoPeca || "",
-            prazo: t.prazo || "SEM_PRAZO",
-            prioridade: t.prioridade || "normal",
-            pedirDocumentos: !!t.pedirDocumentos,
-            docStatus: t.docStatus || DOC_STATUS.NAO_SOLICITADO,
-            observacoes: t.observacoes || "",
-            status: t.status === STATUS.CONCLUIDO ? STATUS.CONCLUIDO : STATUS.PENDENTE,
-            createdAt: t.createdAt || new Date().toISOString(),
-            updatedAt: t.updatedAt || new Date().toISOString(),
-            concluidoEm: t.concluidoEm || null
-          });
-          added++;
-        }
+        if (!t || typeof t !== "object" || Array.isArray(t)) return;
+        const id = typeof t.id === "string" && t.id.length <= 160 ? t.id : "";
+        if (id && existingIds.has(id)) return;
+        const safeId = id || (String(Date.now()) + "_" + Math.random().toString(16).slice(2));
+        tasks.push({
+          id: safeId,
+          cliente: cleanText(t.cliente, 300),
+          telefone: cleanText(t.telefone, 80),
+          processo: cleanText(t.processo, 120),
+          tribunal: cleanText(t.tribunal, 80),
+          tipoPeca: cleanText(t.tipoPeca, 120),
+          prazo: typeof t.prazo === "string" && /^\d{4}-\d{2}-\d{2}$/.test(t.prazo) ? t.prazo : "SEM_PRAZO",
+          prioridade: ["normal", "alta", "urgente"].includes(t.prioridade) ? t.prioridade : "normal",
+          pedirDocumentos: t.pedirDocumentos === true,
+          docStatus: Object.values(DOC_STATUS).includes(t.docStatus) ? t.docStatus : DOC_STATUS.NAO_SOLICITADO,
+          observacoes: cleanText(t.observacoes, 10000),
+          status: t.status === STATUS.CONCLUIDO ? STATUS.CONCLUIDO : STATUS.PENDENTE,
+          createdAt: typeof t.createdAt === "string" ? t.createdAt : new Date().toISOString(),
+          updatedAt: typeof t.updatedAt === "string" ? t.updatedAt : new Date().toISOString(),
+          concluidoEm: typeof t.concluidoEm === "string" ? t.concluidoEm : null
+        });
+        existingIds.add(safeId);
+        added++;
       });
 
-      if (Array.isArray(data.reminders)) {
-        const existingRemIds = new Set(reminders.map(r => r.id));
-        data.reminders.forEach(r => {
-          if (!r.id || !existingRemIds.has(r.id)) {
-            reminders.push(r);
-          }
+      (data.reminders || []).forEach(r => {
+        if (!r || typeof r !== "object" || Array.isArray(r)) return;
+        const id = typeof r.id === "string" && r.id.length <= 160 ? r.id : "";
+        if (id && existingRemIds.has(id)) return;
+        const safeId = id || (String(Date.now()) + "_r_" + Math.random().toString(16).slice(2));
+        reminders.push({
+          id: safeId,
+          titulo: cleanText(r.titulo, 300),
+          cliente: cleanText(r.cliente, 300),
+          processo: cleanText(r.processo, 120),
+          dataAlvo: typeof r.dataAlvo === "string" && /^\d{4}-\d{2}-\d{2}$/.test(r.dataAlvo) ? r.dataAlvo : "",
+          obs: cleanText(r.obs, 10000),
+          status: r.status === STATUS.CONCLUIDO ? STATUS.CONCLUIDO : STATUS.PENDENTE,
+          createdAt: typeof r.createdAt === "string" ? r.createdAt : new Date().toISOString(),
+          updatedAt: typeof r.updatedAt === "string" ? r.updatedAt : new Date().toISOString()
         });
-      }
+        existingRemIds.add(safeId);
+        addedReminders++;
+      });
 
       if (Array.isArray(data.pieceTypes)) {
-        data.pieceTypes.forEach(pt => { if (pt && !pieceTypes.includes(pt)) pieceTypes.push(pt); });
+        data.pieceTypes.forEach(pt => {
+          if (typeof pt === "string" && pt.trim() && pt.length <= 120 && !pieceTypes.includes(pt.trim())) pieceTypes.push(pt.trim());
+        });
         pieceTypes.sort((a, b) => a.localeCompare(b, "pt-BR"));
       }
 
@@ -2458,7 +2490,7 @@ function importJSON() {
       renderHome();
       renderTasks();
       renderCalendar();
-      statusEl.textContent = `Importação concluída com sucesso! ${added} novo(s) registro(s) adicionado(s).`;
+      statusEl.textContent = `Importação concluída! ${added} tarefa(s) e ${addedReminders} lembrete(s) adicionados.`;
       input.value = "";
     } catch (err) {
       statusEl.textContent = "Erro ao processar o arquivo JSON.";
