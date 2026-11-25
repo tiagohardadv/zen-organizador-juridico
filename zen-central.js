@@ -459,6 +459,194 @@
     if(stats.received)window.dispatchEvent(new CustomEvent("zen-central-updated",{detail:{received:stats.received}}));
     return stats;
   }
+
+  let centralBackupPassword = null;
+  let centralBackupUserId = null;
+  let centralBackupSnapshot = null;
+  let centralBackupTimer = null;
+  let centralBackupBusy = false;
+  let centralBackupPending = false;
+  const CENTRAL_BACKUP_FORMAT = "ZEN-ENCRYPTED-BACKUP";
+  const CENTRAL_BACKUP_ITERATIONS = 310000;
+
+  function centralBackupStatus(message, warning) {
+    const el = document.getElementById("zen-central-backup-status");
+    if (el) el.textContent = message;
+    const warn = document.getElementById("zen-central-backup-warning");
+    if (warn) {
+      warn.textContent = warning || "";
+      warn.classList.toggle("hidden", !warning);
+    }
+  }
+  async function centralBackupContext() {
+    const user = current();
+    if (!user || !user.id) throw new Error("Entre no ZEN para acessar os backups.");
+    const saved = await loadHandle();
+    if (!saved || !saved.handle || !saved.deviceId) throw new Error("Este computador ainda não está conectado à Central ZEN.");
+    directory = saved.handle;
+    if (directory.queryPermission && await directory.queryPermission({mode:"readwrite"}) !== "granted") {
+      const permission = await directory.requestPermission({mode:"readwrite"});
+      if (permission !== "granted") throw new Error("Permissão de gravação na Central ZEN não concedida.");
+    }
+    const backups = await directory.getDirectoryHandle("BACKUPS", {create:true});
+    const userDir = await backups.getDirectoryHandle(user.id, {create:true});
+    const deviceDir = await userDir.getDirectoryHandle(saved.deviceId, {create:true});
+    return {user,deviceId:saved.deviceId,userDir,deviceDir};
+  }
+  async function deriveCentralBackupKey(password,salt,iterations,usages) {
+    const material = await crypto.subtle.importKey("raw",encoder.encode(password),"PBKDF2",false,["deriveKey"]);
+    return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations,hash:"SHA-256"},material,{name:"AES-GCM",length:256},false,usages);
+  }
+  async function encryptCentralBackup(data,password) {
+    const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+    const key=await deriveCentralBackupKey(password,salt,CENTRAL_BACKUP_ITERATIONS,["encrypt"]);
+    const ciphertext=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,encoder.encode(JSON.stringify(data)));
+    return {format:CENTRAL_BACKUP_FORMAT,version:1,algorithm:"AES-256-GCM",kdf:"PBKDF2-SHA-256",iterations:CENTRAL_BACKUP_ITERATIONS,salt:b64(salt),iv:b64(iv),ciphertext:b64(new Uint8Array(ciphertext))};
+  }
+  async function decryptCentralBackup(envelope,password) {
+    if(!envelope||envelope.format!==CENTRAL_BACKUP_FORMAT||envelope.version!==1||envelope.algorithm!=="AES-256-GCM"||envelope.kdf!=="PBKDF2-SHA-256"||!Number.isInteger(envelope.iterations)||envelope.iterations<100000||envelope.iterations>1000000)throw new Error("Formato de backup central incompatível.");
+    const salt=fromB64(envelope.salt),iv=fromB64(envelope.iv),ciphertext=fromB64(envelope.ciphertext);
+    if(salt.length!==16||iv.length!==12||ciphertext.length<16)throw new Error("Estrutura criptográfica do backup inválida.");
+    const key=await deriveCentralBackupKey(password,salt,envelope.iterations,["decrypt"]);
+    const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv},key,ciphertext);
+    return JSON.parse(decoder.decode(plain));
+  }
+  async function listCentralUserBackups(userDir) {
+    const found=[];
+    for await(const [deviceId,entry] of userDir.entries()) {
+      if(entry.kind!=="directory"||!/^PC-[A-F0-9]{8,}$/i.test(deviceId))continue;
+      for await(const [name,fileEntry] of entry.entries()) {
+        const match=/^zen_(PC-[A-F0-9]{8,})_(\d{4}-\d{2}-\d{2})\.zen$/i.exec(name);
+        if(fileEntry.kind==="file"&&match&&match[1]===deviceId)found.push({deviceId,date:match[2],name,folder:entry});
+      }
+    }
+    found.sort((a,b)=>b.date.localeCompare(a.date)||b.name.localeCompare(a.name));
+    return found;
+  }
+  async function captureCentralBackup(reason) {
+    if(!centralBackupPassword||!centralBackupSnapshot||!current())return false;
+    if(centralBackupBusy){centralBackupPending=true;return false;}
+    centralBackupBusy=true;
+    try {
+      const ctx=await centralBackupContext();
+      if(centralBackupUserId!==ctx.user.id)throw new Error("A conta mudou. Desbloqueie novamente o backup central.");
+      const data=centralBackupSnapshot();
+      if(!data||!Array.isArray(data.tasks)||!Array.isArray(data.reminders)||!Array.isArray(data.pieceTypes))throw new Error("Os dados para backup são inválidos.");
+      const day=new Date().toISOString().slice(0,10);
+      const payload={version:5.1,backupType:"ZEN-CENTRAL-USER",userId:ctx.user.id,deviceId:ctx.deviceId,reason:String(reason||"automatico"),exportDate:new Date().toISOString(),tasks:data.tasks,reminders:data.reminders,pieceTypes:data.pieceTypes};
+      const envelope=await encryptCentralBackup(payload,centralBackupPassword);
+      const name="zen_"+ctx.deviceId+"_"+day+".zen";
+      const file=await ctx.deviceDir.getFileHandle(name,{create:true});
+      const writable=await file.createWritable();
+      await writable.write(new Blob([JSON.stringify(envelope,null,2)],{type:"application/json"}));
+      await writable.close();
+      const files=[];
+      for await(const [filename,entry] of ctx.deviceDir.entries()) {
+        const m=/^zen_[A-F0-9-]+_(\d{4}-\d{2}-\d{2})\.zen$/i.exec(filename);
+        if(entry.kind==="file"&&m)files.push({name:filename,date:m[1]});
+      }
+      files.sort((a,b)=>b.date.localeCompare(a.date));
+      for(const old of files.slice(7))await ctx.deviceDir.removeEntry(old.name);
+      centralBackupStatus("Backup central atualizado em "+new Date().toLocaleString("pt-BR")+" · "+ctx.deviceId+" · até 7 versões diárias.");
+      return true;
+    } catch(e) {
+      console.warn("ZEN Central: falha no backup:",e);
+      centralBackupStatus("Backup central não foi concluído.",e.message||String(e));
+      return false;
+    } finally {
+      centralBackupBusy=false;
+      if(centralBackupPending){centralBackupPending=false;Promise.resolve().then(()=>captureCentralBackup("alteracao-pendente"));}
+    }
+  }
+  async function activateCentralBackup() {
+    const ctx=await centralBackupContext();
+    const pass=prompt("Defina uma senha exclusiva para os backups da Central ZEN (mínimo de 12 caracteres). Ela não será armazenada:");
+    if(pass===null)return false;
+    if(pass.length<12)throw new Error("A senha deve ter pelo menos 12 caracteres.");
+    const confirmation=prompt("Confirme a senha dos backups centrais:");
+    if(confirmation===null)return false;
+    if(pass!==confirmation)throw new Error("As senhas não conferem.");
+    const existing=await listCentralUserBackups(ctx.userDir);
+    if(existing.length) {
+      const latest=existing[0],file=await latest.folder.getFileHandle(latest.name),envelope=JSON.parse(await (await file.getFile()).text());
+      const payload=await decryptCentralBackup(envelope,pass);
+      if(!payload||payload.userId!==ctx.user.id)throw new Error("O backup encontrado não pertence a esta conta.");
+    }
+    centralBackupPassword=pass;
+    centralBackupUserId=ctx.user.id;
+    const ok=await captureCentralBackup("ativacao");
+    if(ok)alert("Backup automático da Central ZEN ativado. Os arquivos ficam criptografados na pasta BACKUPS. Guarde a senha: ela não pode ser recuperada.");
+    return ok;
+  }
+  async function unlockCentralBackup() {
+    const ctx=await centralBackupContext();
+    const files=await listCentralUserBackups(ctx.userDir);
+    if(!files.length)return activateCentralBackup();
+    const pass=prompt("Informe a senha dos backups desta conta para desbloquear a proteção automática:");
+    if(pass===null)return false;
+    const latest=files[0],file=await latest.folder.getFileHandle(latest.name),envelope=JSON.parse(await (await file.getFile()).text());
+    const payload=await decryptCentralBackup(envelope,pass);
+    if(!payload||payload.userId!==ctx.user.id)throw new Error("A senha ou a identificação da conta não corresponde ao backup.");
+    centralBackupPassword=pass;
+    centralBackupUserId=ctx.user.id;
+    const ok=await captureCentralBackup("desbloqueio");
+    if(ok)centralBackupStatus("Backup central desbloqueado e ativo nesta sessão. "+files.length+" cópia(s) histórica(s) encontrada(s).");
+    return ok;
+  }
+  async function restoreCentralBackup() {
+    const ctx=await centralBackupContext();
+    if(!centralBackupPassword||centralBackupUserId!==ctx.user.id)await unlockCentralBackup();
+    if(!centralBackupPassword||centralBackupUserId!==ctx.user.id)return false;
+    const files=await listCentralUserBackups(ctx.userDir);
+    if(!files.length)throw new Error("Nenhum backup central foi encontrado para esta conta.");
+    const options=files.map((x,i)=>(i+1)+". "+x.date+" · "+x.deviceId).join("\n");
+    const choice=prompt("Escolha a cópia que deseja restaurar:\n\n"+options+"\n\nInforme o número:");
+    if(choice===null)return false;
+    const selected=files[Number(choice)-1];
+    if(!selected)throw new Error("Número de backup inválido.");
+    const file=await selected.folder.getFileHandle(selected.name);
+    const envelope=JSON.parse(await (await file.getFile()).text());
+    const payload=await decryptCentralBackup(envelope,centralBackupPassword);
+    if(!payload||payload.userId!==ctx.user.id||!Array.isArray(payload.tasks)||!Array.isArray(payload.reminders)||!Array.isArray(payload.pieceTypes))throw new Error("O conteúdo do backup não corresponde a esta conta ou está inválido.");
+    if(!confirm("Restaurar a cópia de "+selected.date+" criada no dispositivo "+selected.deviceId+"? Os registros serão mesclados com os dados atuais, sem apagar a base existente."))return false;
+    const input=document.getElementById("file-import");
+    if(!input||typeof importJSON!=="function")throw new Error("A área de importação não está disponível.");
+    const transfer=new DataTransfer();
+    transfer.items.add(new File([JSON.stringify(payload)],"backup-central.json",{type:"application/json"}));
+    input.files=transfer.files;
+    importJSON();
+    centralBackupStatus("Backup de "+selected.date+" enviado para restauração por mesclagem.");
+    return true;
+  }
+  function startCentralBackup(snapshot) {
+    const user=current();
+    if(!user)return;
+    if(centralBackupUserId&&centralBackupUserId!==user.id)centralBackupPassword=null;
+    centralBackupUserId=user.id;
+    centralBackupSnapshot=snapshot;
+    if(centralBackupTimer)clearInterval(centralBackupTimer);
+    centralBackupTimer=setInterval(async()=>{
+      if(!centralBackupPassword||!centralBackupSnapshot||!current()||current().id!==centralBackupUserId)return;
+      try {
+        const ctx=await centralBackupContext(),day=new Date().toISOString().slice(0,10);
+        const fileName="zen_"+ctx.deviceId+"_"+day+".zen";
+        try{await ctx.deviceDir.getFileHandle(fileName);}
+        catch(e){if(e.name==="NotFoundError")await captureCentralBackup("rotina-diaria");}
+      } catch(e){console.warn("ZEN Central backup timer:",e);}
+    },30*60*1000);
+    refreshCentralBackupStatus().catch(()=>{});
+  }
+  async function refreshCentralBackupStatus() {
+    try {
+      const ctx=await centralBackupContext(),files=await listCentralUserBackups(ctx.userDir);
+      if(centralBackupPassword&&centralBackupUserId===ctx.user.id)centralBackupStatus("Backup automático ativo nesta sessão · "+files.length+" cópia(s) histórica(s) na Central.");
+      else if(files.length)centralBackupStatus(files.length+" cópia(s) criptografada(s) encontrada(s). Desbloqueie para retomar os backups automáticos.");
+      else centralBackupStatus("Nenhum backup central encontrado. Ative a proteção para criar a primeira cópia.");
+    } catch(e) {
+      centralBackupStatus("Central indisponível para backup.",e.message||String(e));
+    }
+  }
+
   function getSharedTasks(userId){if(!userId)return [];return Object.values(taskCache().entries||{}).filter(x=>!x.deleted&&x.record&&Array.isArray(x.targetUserIds)&&x.targetUserIds.includes(userId)).map(x=>{const grant=(x.targetPermissions||[]).find(g=>g.userId===userId);return {...x.record,_sharedOwnerId:x.ownerUserId,_sharedOwnerName:x.ownerName||"Usuário",_sharedPermission:grant&&grant.permission==="edit"?"edit":"view",_centralRemote:true,_centralOwnerDeviceId:x.ownerDeviceId||null,_centralBaseUpdatedAt:x.record.updatedAt||null};});}
   function startBackgroundSync(){
     if(window.__ZEN_CENTRAL_SYNC_TIMER)return;
@@ -505,6 +693,7 @@
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><h2 style="margin:0">Central de Informações ZEN</h2><button class="btn btn-ghost" id="zen-central-close">Fechar</button></div>' +
       '<p style="color:var(--text-muted);font-size:.86rem;line-height:1.5">A Central ZEN sincroniza tarefas compartilhadas entre computadores autorizados. Lembretes e dados particulares permanecem locais. A sincronização ocorre enquanto o aplicativo está aberto e a pasta do Google Drive está disponível.</p>' +
       '<div id="zen-central-status" role="status" style="padding:10px;background:var(--surface-subtle);border:1px solid var(--border);border-radius:8px;font-size:.82rem;margin:12px 0">Nenhuma central conectada nesta sessão.</div>' +
+      '<div style="border:1px solid var(--border);border-radius:9px;padding:12px;margin:12px 0"><strong style="font-size:.9rem">Backup automático na Central</strong><p id="zen-central-backup-status" style="font-size:.8rem;color:var(--text-muted);margin:7px 0">Verificando backups...</p><p id="zen-central-backup-warning" class="hidden" role="status" style="font-size:.78rem;color:var(--danger);margin:0 0 8px"></p><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn btn-primary" id="zen-central-backup-unlock">Ativar / desbloquear</button><button class="btn btn-ghost" id="zen-central-backup-now">Criar backup agora</button><button class="btn btn-ghost" id="zen-central-backup-restore">Restaurar backup</button></div><p style="font-size:.72rem;color:var(--text-muted);margin:8px 0 0">Cópias criptografadas por senha na pasta BACKUPS, separadas por conta e computador. Até 7 versões diárias por computador. A senha não é armazenada; é necessário desbloquear em cada sessão.</p></div>' +
       (admin ? '<div style="display:grid;gap:9px"><button class="btn btn-primary" id="zen-central-setup">Criar / conectar central (administrador)</button><button class="btn btn-ghost" id="zen-central-invite">Gerar convite de dispositivo</button><button class="btn btn-ghost" id="zen-central-review">Analisar solicitações e autorizar dispositivo</button><button class="btn btn-ghost" id="zen-central-sync">Reconectar / sincronizar agora</button></div>' : '<div style="display:grid;gap:9px"><button class="btn btn-primary" id="zen-central-request">Conectar e solicitar ativação</button><button class="btn btn-ghost" id="zen-central-sync">Reconectar / sincronizar agora</button></div>') +
       '<p style="font-size:.75rem;color:var(--text-muted);margin-top:14px">Acesso à pasta é concedido pelo Google Drive. Os controles internos do ZEN não impedem que alguém com permissão direta de edição altere arquivos manualmente. Não armazene dados reais nesta central experimental até concluir as etapas de segurança e sincronização.</p></section>';
     document.body.appendChild(modal);
@@ -528,6 +717,13 @@
     if (request) request.onclick = () => run(requestActivation);
     const sync = modal.querySelector("#zen-central-sync");
     if (sync) sync.onclick = () => run(reconnectCentral);
+    const backupUnlock = modal.querySelector("#zen-central-backup-unlock");
+    if (backupUnlock) backupUnlock.onclick = () => run(async()=>{await unlockCentralBackup();await refreshCentralBackupStatus();});
+    const backupNow = modal.querySelector("#zen-central-backup-now");
+    if (backupNow) backupNow.onclick = () => run(async()=>{if(!centralBackupPassword)await unlockCentralBackup();await captureCentralBackup("manual");});
+    const backupRestore = modal.querySelector("#zen-central-backup-restore");
+    if (backupRestore) backupRestore.onclick = () => run(restoreCentralBackup);
+    refreshCentralBackupStatus();
     (async () => {
       try {
         const saved = await loadHandle();
@@ -565,6 +761,8 @@
     syncNow,
     reconnectCentral,
     getSharedTasks,
+    startCentralBackup,
+    captureBackup: captureCentralBackup,
     createInvitation,
     reviewRequests,
     getStatus: () => ({ connected: !!directory, stage: "encrypted-task-sharing-sync", intervalSeconds: 10 })
