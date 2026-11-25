@@ -65,8 +65,14 @@ async function restoreLatest(){
 async function start(id,snapshot,restore){
  userId=id;getSnapshot=snapshot;onRestore=restore;
  try{
-  const items=await list(),today=new Date().toISOString().slice(0,10);
+  const items=await list(),today=new Date().toISOString().slice(0,10),previous=items[0];
+  const previousAge=previous?Date.now()-previous.createdAt:0;
+  const wasStale=!!previous&&previousAge>STALE;
   if(!items.some(x=>x.id===userId+"|"+today))await capture("inicio-do-dia");else await refresh();
+  if(wasStale){
+   const warning=document.getElementById("zen-local-backup-warning");
+   if(warning){warning.textContent="Alerta: a cópia anterior estava desatualizada ("+Math.floor(previousAge/3600000)+" horas). Uma nova cópia local foi criada nesta entrada.";warning.classList.remove("hidden");}
+  }
   if(timer)clearInterval(timer);
   timer=setInterval(async()=>{const current=await list().catch(()=>[]),day=new Date().toISOString().slice(0,10);if(!current.some(x=>x.id===userId+"|"+day))await capture("rotina-diaria");else await refresh();},30*60*1000);
   if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>false);
