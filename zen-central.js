@@ -295,6 +295,8 @@
     devicesFile.devices=Array.isArray(devicesFile.devices)?devicesFile.devices:[];
     if(devicesFile.devices.some(d=>d.deviceId===device.deviceId))throw new Error("Dispositivo já cadastrado.");
     devicesFile.devices.push(device);await writeJson(adminDir,"dispositivos.json",devicesFile);
+    const publicUsers=users.map(u=>({id:u.id,name:u.name,username:u.username,role:u.role,active:u.active}));
+    await writeJson(adminDir,"usuarios.json",{schemaVersion:2,updatedAt:new Date().toISOString(),users:publicUsers});
     invite.usedAt=new Date().toISOString();invite.usedByDeviceId=device.deviceId;await writeJson(inviteDir,selected.req.invitationFile,invite);
     selected.req.status="approved";selected.req.approvedAt=new Date().toISOString();await writeJson(requestDir,selected.name,selected.req);
     renderStatus("Dispositivo autorizado e credenciais criptografadas: "+device.deviceId);
