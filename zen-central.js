@@ -377,6 +377,7 @@
     if(!record||!record._centralRemote||record._sharedPermission!=="edit")return false;
     const saved=await loadHandle();if(!saved||!saved.handle||!saved.deviceId)return false;directory=saved.handle;
     const user=current();if(!user)return false;
+    if(record.updatedAt&&record._centralBaseUpdatedAt&&record.updatedAt===record._centralBaseUpdatedAt)return false;
     const manifest=await readJson(await directory.getDirectoryHandle("CENTRAL"),"identificacao.json");
     const secrets=await loadDeviceSecrets(saved.deviceId);if(!secrets||!secrets.signingPrivateKey)return false;
     const reg=await readJson(await directory.getDirectoryHandle("ADMIN"),"dispositivos.json");
