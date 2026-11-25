@@ -440,6 +440,58 @@
       display: none !important;
     }
   }
+
+  /* Ajustes de consistência visual — cabeçalho e Central ZEN */
+  .header-actions { min-width:0; gap:8px; }
+  .header-actions > * { flex-shrink:0; }
+  #zen-user-tools { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+  #zen-user-tools .user-name { max-width:190px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .zen-central-trigger { border-color:var(--border); }
+  .zen-central-overlay { position:fixed; inset:0; z-index:999990; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(15,23,42,.66); backdrop-filter:blur(5px); }
+  .zen-central-dialog { width:min(100%,680px); max-height:min(92vh,900px); overflow:auto; padding:24px; border:1px solid var(--border); border-radius:16px; background:var(--surface); color:var(--text); box-shadow:0 26px 80px rgba(15,23,42,.28); }
+  .zen-central-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; padding-bottom:16px; border-bottom:1px solid var(--border); }
+  .zen-central-heading h2 { display:block; margin:4px 0 0; padding:0; border:0; font-size:1.25rem; line-height:1.25; }
+  .zen-central-eyebrow { color:var(--accent); font-size:.67rem; font-weight:800; letter-spacing:.1em; }
+  .zen-central-intro { margin:14px 0; color:var(--text-muted); font-size:.86rem; line-height:1.55; }
+  .zen-central-status { padding:11px 13px; border:1px solid var(--border); border-radius:9px; background:var(--surface-subtle); font-size:.82rem; line-height:1.5; overflow-wrap:anywhere; }
+  .zen-central-backup-card { margin:14px 0; padding:16px; border:1px solid var(--border); border-radius:12px; background:var(--surface-subtle); }
+  .zen-central-section-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  .zen-central-section-heading h3 { margin:0; font-size:.98rem; }
+  .zen-central-section-heading p { margin:4px 0 0; color:var(--text-muted); font-size:.78rem; }
+  .zen-central-lock-icon { display:grid; place-items:center; width:38px; height:38px; border-radius:10px; background:var(--primary-light); font-size:1.1rem; flex:none; }
+  .zen-central-backup-status { margin:12px 0 8px; color:var(--text-muted); font-size:.82rem; line-height:1.45; }
+  .zen-central-warning { margin:0 0 10px; padding:9px 10px; border-radius:7px; color:var(--danger); background:var(--danger-bg); font-size:.78rem; line-height:1.4; overflow-wrap:anywhere; }
+  .zen-central-button-row { display:flex; flex-wrap:wrap; gap:8px; }
+  .zen-central-help,.zen-central-footnote { margin:10px 0 0; color:var(--text-muted); font-size:.73rem; line-height:1.5; }
+  .zen-central-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+  .zen-central-actions .btn { min-height:36px; white-space:normal; text-align:center; }
+  .zen-central-dialog .btn { min-height:34px; }
+  .zen-central-dialog button:focus-visible,.header-actions button:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+  .zen-backup-summary { padding:16px; border:1px solid var(--border); border-radius:11px; background:linear-gradient(135deg,var(--surface-subtle),var(--surface)); }
+  .zen-backup-summary h3 { margin:0 0 7px; font-size:1rem; }
+  .zen-backup-summary p { max-width:760px; }
+  @media(max-width:900px) {
+    header { gap:12px; flex-wrap:wrap; }
+    .header-actions { width:100%; justify-content:flex-start; }
+    .app-layout { grid-template-columns:minmax(0,1fr); }
+    .sidebar { gap:4px; }
+    .sidebar .nav-item { flex:0 0 auto; }
+  }
+  @media(max-width:560px) {
+    header { padding:10px 12px; }
+    .header-actions { gap:6px; }
+    .header-actions .btn { font-size:.75rem!important; }
+    .header-actions select { max-width:145px; }
+    .app-layout { padding:8px; gap:10px; }
+    .card { padding:12px; }
+    .zen-central-overlay { padding:9px; align-items:flex-end; }
+    .zen-central-dialog { padding:16px; max-height:94vh; border-radius:15px 15px 10px 10px; }
+    .zen-central-heading { align-items:flex-start; }
+    .zen-central-button-row { display:grid; grid-template-columns:1fr; }
+    .zen-central-button-row .btn { width:100%; }
+    .zen-central-actions { grid-template-columns:1fr; }
+  }
+
 </style>
 </head>
 <body>
@@ -943,8 +995,8 @@
       <!-- EXPORT / IMPORT -->
       <section id="export" class="card hidden">
         <h2>Backup, Exportação e Importação de Dados</h2>
-        <div class="card" style="margin:12px 0;padding:14px;border:1px solid var(--border);">
-          <h3 style="margin:0 0 8px;font-size:1rem;">Backup automático pela Central ZEN</h3>
+        <div class="zen-backup-summary" style="margin:12px 0;">
+          <h3>Backup automático pela Central ZEN</h3>
           <p style="margin:0 0 10px;font-size:.84rem;color:var(--text-muted);">Os backups criptografados são armazenados na pasta compartilhada da Central ZEN, separados por usuário e computador. Para ativar, desbloquear ou restaurar cópias, abra a Central ZEN no cabeçalho.</p>
           <button class="btn btn-primary" type="button" onclick="document.getElementById('zen-central-entry')?.click()">☁ Abrir backups da Central ZEN</button>
         </div>
@@ -991,7 +1043,7 @@
       <section id="about" class="card hidden">
         <h2>Sobre o ZEN Jurídico</h2>
         <p><strong>ZEN — Organizador Jurídico</strong> é uma ferramenta desenvolvida para o controle de prazos processuais, intimações e diligências.</p>
-        <p>Desenvolvido por <strong>Tiago da Silva</strong>. Os dados são armazenados exclusivamente de forma local no seu navegador (localStorage), mantendo os registros no dispositivo. O controle por senha não substitui a proteção do próprio computador e do perfil do navegador.</p>
+        <p>Desenvolvido por <strong>Tiago da Silva</strong>. Os dados particulares permanecem no armazenamento local do navegador. A Central ZEN transporta tarefas compartilhadas entre computadores autorizados e mantém backups criptografados na pasta compartilhada. O controle por senha não substitui a proteção do próprio computador e do perfil do navegador.</p>
       </section>
 
       <!-- TERMOS -->
