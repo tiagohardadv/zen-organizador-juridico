@@ -732,7 +732,7 @@
             <label class="label-text">Tipo de Peça *</label>
             <div style="display: flex; gap: 4px;">
               <select id="tipo-peca" required style="flex: 1;"></select>
-              <button type="button" class="btn btn-ghost" onclick="addNewPieceType()" title="Adicionar novo tipo">+</button>
+              <button id="add-piece-type-btn" type="button" class="btn btn-ghost hidden" onclick="addNewPieceType()" title="Adicionar novo tipo (administrador)">+</button>
             </div>
           </div>
           
@@ -1048,7 +1048,7 @@
     ZEN Organizador Jurídico — Desenvolvido por Tiago da Silva — Todos os direitos reservados.
   </footer>
 
-<script src="./auth.js?v=20261125-2"></script>
+<script src="./auth.js?v=20261125-3"></script>
 <script src="./backup-security.js?v=20261125-1"></script>
 <script>
 const STORAGE_KEYS = {
@@ -1397,6 +1397,7 @@ function updateTribunalFilterOptions() {
     sel.appendChild(opt);
   });
   if (tribunais.includes(currentVal)) sel.value = currentVal;
+  if (typeof populateCompletedFilters === "function") populateCompletedFilters();
 }
 
 function addNewPieceType(){if(!ZEN_AUTH.isAdmin())return alert("A inclusão de tipos de peças está disponível somente na Administração.");const name=prompt("Informe o nome do novo tipo de peça processual:");
@@ -1900,6 +1901,7 @@ function handleReminderSubmit(e) {
   }
 
   saveStorage();
+  zenLog(id ? "lembrete editado" : "lembrete criado", titulo);
   closeReminderModal();
   renderHome();
   renderTasks();
@@ -1939,6 +1941,7 @@ function deleteReminder(id) {
   if (!confirm("Deseja excluir este lembrete?")) return;
   reminders = reminders.filter(r => r.id !== id);
   saveStorage();
+  zenLog("lembrete excluído", target.titulo);
   renderHome();
   renderTasks();
   renderCalendar();
@@ -2288,6 +2291,7 @@ function handleFormSubmit(e) {
   }
 
   saveStorage();
+  zenLog(id ? "tarefa editada" : "tarefa criada", cliente + (processo ? " — " + processo : ""));
   updateTribunalFilterOptions();
   resetTaskForm();
   renderHome();
@@ -2340,8 +2344,10 @@ function toggleTaskStatus(id) {
   }
   t.updatedAt = now;
   saveStorage();
+  zenLog(t.status === STATUS.CONCLUIDO ? "tarefa cumprida" : "tarefa reaberta", t.cliente + (t.processo ? " — " + t.processo : ""));
   renderHome();
   renderTasks();
+  renderCompletedTasks();
   renderCalendar();
 }
 
@@ -2352,6 +2358,7 @@ function deleteTask(id) {
   if (!confirm("Deseja realmente excluir este registro?")) return;
   tasks = tasks.filter(t => t.id !== id);
   saveStorage();
+  zenLog("tarefa excluída", target.cliente + (target.processo ? " — " + target.processo : ""));
   updateTribunalFilterOptions();
   renderHome();
   renderTasks();
@@ -2549,7 +2556,7 @@ function clearAllData() {
 const ZEN_LOG_KEY="zen_admin_logs_v1";
 function zenLog(action,details){try{const u=ZEN_AUTH.getCurrentUser();if(!u)return;const a=JSON.parse(localStorage.getItem(ZEN_LOG_KEY)||"[]");a.unshift({at:new Date().toISOString(),username:u.username,name:u.name,action:String(action).slice(0,80),details:String(details||"").slice(0,250)});localStorage.setItem(ZEN_LOG_KEY,JSON.stringify(a.slice(0,1500)));}catch(e){}}
 function openAdminUsers(){if(!ZEN_AUTH.isAdmin())return alert("Acesso restrito a administradores.");ZEN_AUTH.openAdmin();zenLog("abriu gerenciamento de usuários","");}
-function refreshAdminMenu(){const ok=ZEN_AUTH.isAdmin();document.getElementById("admin-nav")?.classList.toggle("hidden",!ok);document.getElementById("admin-nav-divider")?.classList.toggle("hidden",!ok);}
+function refreshAdminMenu(){const ok=ZEN_AUTH.isAdmin();document.getElementById("admin-nav")?.classList.toggle("hidden",!ok);document.getElementById("admin-nav-divider")?.classList.toggle("hidden",!ok);document.getElementById("add-piece-type-btn")?.classList.toggle("hidden",!ok);}
 function renderAdministration(){const ok=ZEN_AUTH.isAdmin();document.getElementById("admin-content").classList.toggle("hidden",!ok);document.getElementById("admin-denied").classList.toggle("hidden",ok);if(!ok)return;
 const us=ZEN_AUTH.getUsers(),logs=JSON.parse(localStorage.getItem(ZEN_LOG_KEY)||"[]");
 document.getElementById("adm-users-count").textContent=us.length;document.getElementById("adm-admin-count").textContent=us.filter(u=>u.active&&u.role==="admin").length;document.getElementById("adm-types-count").textContent=pieceTypes.length;document.getElementById("adm-logs-count").textContent=logs.length;
