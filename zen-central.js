@@ -130,46 +130,78 @@
     await saveHandle(root, null);
     return manifest;
   }
+  async function loadDeviceSecrets(deviceId) {
+    const db=await openDB();
+    return new Promise((resolve,reject)=>{const req=db.transaction(STORE,"readonly").objectStore(STORE).get("device-private-"+deviceId);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error);});
+  }
+  async function deriveBundleKey(privateKey,publicJwk,salt,centralId,deviceId) {
+    const pub=await crypto.subtle.importKey("jwk",publicJwk,{name:"ECDH",namedCurve:"P-256"},false,[]);
+    const secret=await crypto.subtle.deriveBits({name:"ECDH",public:pub},privateKey,256);
+    const material=await crypto.subtle.importKey("raw",secret,"HKDF",false,["deriveKey"]);
+    return crypto.subtle.deriveKey({name:"HKDF",hash:"SHA-256",salt,info:encoder.encode("ZEN-CENTRAL-USERS|"+centralId+"|"+deviceId)},material,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+  }
+  async function encryptUsersForDevice(users,exchangePublicKey,centralId,deviceId) {
+    const pair=await crypto.subtle.generateKey({name:"ECDH",namedCurve:"P-256"},false,["deriveBits"]);
+    const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+    const ephemeralPublicKey=await crypto.subtle.exportKey("jwk",pair.publicKey);
+    const key=await deriveBundleKey(pair.privateKey,exchangePublicKey,salt,centralId,deviceId);
+    const plain=encoder.encode(JSON.stringify({schemaVersion:1,centralId,deviceId,users,createdAt:new Date().toISOString()}));
+    const cipher=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,plain);
+    return {schemaVersion:1,centralId,deviceId,ephemeralPublicKey,salt:b64(salt),iv:b64(iv),ciphertext:b64(new Uint8Array(cipher)),createdAt:new Date().toISOString()};
+  }
+  async function decryptUsersBundle(bundle,privateKey,centralId,deviceId) {
+    if(!bundle||bundle.centralId!==centralId||bundle.deviceId!==deviceId)throw new Error("Pacote de credenciais não corresponde a este computador.");
+    const key=await deriveBundleKey(privateKey,bundle.ephemeralPublicKey,fromB64(bundle.salt),centralId,deviceId);
+    const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv:fromB64(bundle.iv)},key,fromB64(bundle.ciphertext));
+    const data=JSON.parse(decoder.decode(plain));
+    if(data.centralId!==centralId||data.deviceId!==deviceId||!Array.isArray(data.users))throw new Error("Conteúdo de credenciais inválido.");
+    return data.users;
+  }
   async function requestActivation() {
-    const manifest = await chooseCentral();
-    const user = current();
-    if (!user) throw new Error("Entre no ZEN antes de solicitar a ativação.");
-    const code = prompt("Informe o código de ativação individual fornecido pelo administrador:");
-    if (!code) return;
-    const codeHash = await sha256(code.trim());
-    const invitesDir = await directory.getDirectoryHandle("ADMIN").then(d => d.getDirectoryHandle("CONVITES"));
-    let invitation = null;
-    for await (const [name, entry] of invitesDir.entries()) {
-      if (entry.kind !== "file" || !name.endsWith(".json")) continue;
-      try {
-        const item = await readJson(invitesDir, name);
-        if (item.codeHash === codeHash && !item.usedAt && new Date(item.expiresAt).getTime() > Date.now()) {
-          invitation = { name, item }; break;
-        }
-      } catch (_) {}
-    }
-    if (!invitation) throw new Error("Código inválido, expirado ou já utilizado.");
-    const deviceId = id();
-    const keys = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, false, ["sign", "verify"]);
-    const publicKey = await crypto.subtle.exportKey("jwk", keys.publicKey);
-    const proof = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, keys.privateKey, encoder.encode(manifest.centralId + "|" + deviceId + "|" + user.id));
-    const request = {
-      schemaVersion: 1, requestId: crypto.randomUUID(), centralId: manifest.centralId,
-      deviceId, userId: user.id, username: user.username, displayName: user.name,
-      publicKey, proof: b64(new Uint8Array(proof)), invitationFile: invitation.name, codeHash,
-      requestedAt: new Date().toISOString(), status: "pending"
-    };
-    const requests = await directory.getDirectoryHandle("SOLICITACOES");
-    await writeJson(requests, deviceId + ".json", request);
-    await saveHandle(directory, deviceId);
-    const db = await openDB();
-    await new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE, "readwrite");
-      tx.objectStore(STORE).put({ key: "device-private-" + deviceId, privateKey: keys.privateKey, publicKey: keys.publicKey, userId: user.id, centralId: manifest.centralId });
-      tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
-    });
-    renderStatus("Solicitação enviada. Aguarde a aprovação do administrador. Dispositivo: " + deviceId);
-    alert("Solicitação enviada ao administrador. Este computador ainda não está autorizado a sincronizar dados.");
+    const manifest=await chooseCentral();
+    const code=prompt("Informe o código de ativação individual fornecido pelo administrador:");
+    if(!code)return;
+    const codeHash=await sha256(code.trim().toUpperCase());
+    const invites=await directory.getDirectoryHandle("ADMIN").then(d=>d.getDirectoryHandle("CONVITES"));
+    let invitation=null;
+    for await(const [name,entry] of invites.entries()){if(entry.kind!=="file"||!name.endsWith(".json"))continue;try{const item=await readJson(invites,name);if(item.codeHash===codeHash&&!item.usedAt&&new Date(item.expiresAt).getTime()>Date.now()){invitation={name,item};break;}}catch(_){}}
+    if(!invitation)throw new Error("Código inválido, expirado ou já utilizado.");
+    const deviceId=id();
+    const signing=await crypto.subtle.generateKey({name:"ECDSA",namedCurve:"P-256"},false,["sign","verify"]);
+    const exchange=await crypto.subtle.generateKey({name:"ECDH",namedCurve:"P-256"},false,["deriveBits"]);
+    const publicKey=await crypto.subtle.exportKey("jwk",signing.publicKey);
+    const exchangePublicKey=await crypto.subtle.exportKey("jwk",exchange.publicKey);
+    const proof=await crypto.subtle.sign({name:"ECDSA",hash:"SHA-256"},signing.privateKey,encoder.encode(manifest.centralId+"|"+deviceId+"|ZEN-DEVICE-ACTIVATION"));
+    const request={schemaVersion:2,requestId:crypto.randomUUID(),centralId:manifest.centralId,deviceId,deviceLabel:"Computador "+deviceId.slice(-6),publicKey,exchangePublicKey,proof:b64(new Uint8Array(proof)),invitationFile:invitation.name,codeHash,requestedAt:new Date().toISOString(),status:"pending"};
+    await writeJson(await directory.getDirectoryHandle("SOLICITACOES"),deviceId+".json",request);
+    await saveHandle(directory,deviceId);
+    const db=await openDB();
+    await new Promise((resolve,reject)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).put({key:"device-private-"+deviceId,signingPrivateKey:signing.privateKey,exchangePrivateKey:exchange.privateKey,exchangePublicKey,centralId:manifest.centralId});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});
+    renderStatus("Solicitação enviada. Dispositivo: "+deviceId);
+    alert("Solicitação enviada. Após a aprovação do administrador, clique novamente em “Ativar / conectar este computador” para carregar os usuários.");
+  }
+  async function checkActivation() {
+    const saved=await loadHandle();
+    if(!saved||!saved.handle||!saved.deviceId)throw new Error("Este computador ainda não enviou solicitação de ativação.");
+    directory=saved.handle;
+    const manifest=await readJson(await directory.getDirectoryHandle("CENTRAL"),"identificacao.json");
+    const request=await readJson(await directory.getDirectoryHandle("SOLICITACOES"),saved.deviceId+".json");
+    if(request.status==="pending"){renderStatus("Aguardando aprovação do administrador.");alert("O administrador ainda não aprovou este computador. Tente novamente depois da autorização.");return false;}
+    if(request.status!=="approved")throw new Error("A solicitação deste computador não foi aprovada.");
+    const secrets=await loadDeviceSecrets(saved.deviceId);
+    if(!secrets||!secrets.exchangePrivateKey)throw new Error("A chave privada local não foi encontrada. Será necessário solicitar nova ativação.");
+    const bundle=await readJson(await directory.getDirectoryHandle("ADMIN").then(d=>d.getDirectoryHandle("CREDENCIAIS")),saved.deviceId+".json");
+    const list=await decryptUsersBundle(bundle,secrets.exchangePrivateKey,manifest.centralId,saved.deviceId);
+    const count=ZEN_AUTH.importCentralUsers(list);
+    renderStatus("Computador ativado. "+count+" usuário(s) carregado(s).");
+    alert("Computador autorizado e usuários carregados. Entre com uma conta cadastrada no computador administrador.");
+    if(ZEN_AUTH.showLogin)ZEN_AUTH.showLogin();
+    return true;
+  }
+  async function activateBeforeLogin() {
+    const saved=await loadHandle();
+    if(saved&&saved.deviceId)return checkActivation();
+    return requestActivation();
   }
   async function createInvitation() {
     if (!isAdmin()) throw new Error("Somente o administrador pode emitir convites.");
@@ -234,54 +266,52 @@
     modal.addEventListener("click", event => { if (event.target === modal) modal.remove(); });
   }
   async function reviewRequests() {
-    if (!isAdmin()) throw new Error("Somente o administrador pode autorizar dispositivos.");
-    if (!directory) {
-      const saved = await loadHandle();
-      if (saved && saved.handle) directory = saved.handle;
-      else await chooseCentral();
+    if(!isAdmin())throw new Error("Somente o administrador pode autorizar dispositivos.");
+    if(!directory){const saved=await loadHandle();if(saved&&saved.handle)directory=saved.handle;else await chooseCentral();}
+    const requestDir=await directory.getDirectoryHandle("SOLICITACOES"),adminDir=await directory.getDirectoryHandle("ADMIN");
+    const devicesFile=await readJson(adminDir,"dispositivos.json"),pending=[];
+    for await(const [name,entry] of requestDir.entries()){if(entry.kind!=="file"||!name.endsWith(".json"))continue;try{const req=await readJson(requestDir,name);if(req.status==="pending")pending.push({name,req});}catch(_){}}
+    if(!pending.length){alert("Não há solicitações pendentes.");return;}
+    const listing=pending.map((x,i)=>(i+1)+". "+x.req.deviceLabel+" — "+x.req.deviceId).join("\n");
+    const choice=prompt("Solicitações pendentes:\n\n"+listing+"\n\nInforme o número do computador:");
+    const selected=pending[Number(choice)-1];if(!selected)return;
+    if(!confirm("Autorizar "+selected.req.deviceId+" e disponibilizar a base de usuários criptografada para este computador?"))return;
+    const inviteDir=await adminDir.getDirectoryHandle("CONVITES");
+    if(!/^[a-f0-9-]{36}\.json$/i.test(selected.req.invitationFile||""))throw new Error("Referência de convite inválida.");
+    const invite=await readJson(inviteDir,selected.req.invitationFile);
+    if(invite.centralId!==selected.req.centralId||invite.codeHash!==selected.req.codeHash||invite.usedAt||new Date(invite.expiresAt).getTime()<=Date.now())throw new Error("Convite inválido, expirado ou já utilizado.");
+    const signingKey=await crypto.subtle.importKey("jwk",selected.req.publicKey,{name:"ECDSA",namedCurve:"P-256"},false,["verify"]);
+    const valid=await crypto.subtle.verify({name:"ECDSA",hash:"SHA-256"},signingKey,fromB64(selected.req.proof),encoder.encode(selected.req.centralId+"|"+selected.req.deviceId+"|ZEN-DEVICE-ACTIVATION"));
+    if(!valid)throw new Error("Prova criptográfica do dispositivo inválida.");
+    if(!selected.req.exchangePublicKey||selected.req.exchangePublicKey.kty!=="EC")throw new Error("Chave de criptografia do dispositivo ausente.");
+    await crypto.subtle.importKey("jwk",selected.req.exchangePublicKey,{name:"ECDH",namedCurve:"P-256"},false,[]);
+    const users=ZEN_AUTH.exportCredentialRecords();
+    if(!users.length||!users.some(u=>u.active&&u.role==="admin"))throw new Error("A base local não contém administrador ativo.");
+    const manifest=await readJson(await directory.getDirectoryHandle("CENTRAL"),"identificacao.json");
+    const bundle=await encryptUsersForDevice(users,selected.req.exchangePublicKey,manifest.centralId,selected.req.deviceId);
+    const credentialDir=await adminDir.getDirectoryHandle("CREDENCIAIS",{create:true});
+    await writeJson(credentialDir,selected.req.deviceId+".json",bundle);
+    const device={deviceId:selected.req.deviceId,deviceLabel:selected.req.deviceLabel,publicKey:selected.req.publicKey,exchangePublicKey:selected.req.exchangePublicKey,authorizedAt:new Date().toISOString(),status:"active"};
+    devicesFile.devices=Array.isArray(devicesFile.devices)?devicesFile.devices:[];
+    if(devicesFile.devices.some(d=>d.deviceId===device.deviceId))throw new Error("Dispositivo já cadastrado.");
+    devicesFile.devices.push(device);await writeJson(adminDir,"dispositivos.json",devicesFile);
+    invite.usedAt=new Date().toISOString();invite.usedByDeviceId=device.deviceId;await writeJson(inviteDir,selected.req.invitationFile,invite);
+    selected.req.status="approved";selected.req.approvedAt=new Date().toISOString();await writeJson(requestDir,selected.name,selected.req);
+    renderStatus("Dispositivo autorizado e credenciais criptografadas: "+device.deviceId);
+    alert("Dispositivo autorizado. No PC correspondente, clique em “Ativar / conectar este computador” para carregar os usuários.");
+  }
+  async function publishUsers(users) {
+    if(!isAdmin()||!Array.isArray(users))return;
+    if(!directory){const saved=await loadHandle();if(!saved||!saved.handle)return;directory=saved.handle;}
+    const adminDir=await directory.getDirectoryHandle("ADMIN"),devices=await readJson(adminDir,"dispositivos.json");
+    const manifest=await readJson(await directory.getDirectoryHandle("CENTRAL"),"identificacao.json");
+    const credentialDir=await adminDir.getDirectoryHandle("CREDENCIAIS",{create:true});
+    for(const device of (devices.devices||[]).filter(d=>d.status==="active"&&d.exchangePublicKey)){
+      const bundle=await encryptUsersForDevice(users,device.exchangePublicKey,manifest.centralId,device.deviceId);
+      await writeJson(credentialDir,device.deviceId+".json",bundle);
     }
-    const requestDir = await directory.getDirectoryHandle("SOLICITACOES");
-    const adminDir = await directory.getDirectoryHandle("ADMIN");
-    const devicesFile = await readJson(adminDir, "dispositivos.json");
-    const pending = [];
-    for await (const [name, entry] of requestDir.entries()) {
-      if (entry.kind !== "file" || !name.endsWith(".json")) continue;
-      try {
-        const req = await readJson(requestDir, name);
-        if (req.status === "pending") pending.push({ name, req });
-      } catch (_) {}
-    }
-    if (!pending.length) { alert("Não há solicitações pendentes."); return; }
-    const listing = pending.map((x, i) => (i + 1) + ". " + x.req.deviceId + " — " + x.req.username + " (" + x.req.displayName + ")").join("\n");
-    const choice = prompt("Solicitações pendentes:\n\n" + listing + "\n\nInforme o número do dispositivo que deseja autorizar:");
-    const selected = pending[Number(choice) - 1];
-    if (!selected) return;
-    if (!confirm("Autorizar " + selected.req.deviceId + " para o usuário " + selected.req.username + "?")) return;
-    const inviteDir = await adminDir.getDirectoryHandle("CONVITES");
-    if (!/^[a-f0-9-]{36}\\.json$/i.test(selected.req.invitationFile || "")) throw new Error("Referência de convite inválida.");
-    const invite = await readJson(inviteDir, selected.req.invitationFile);
-    if (invite.centralId !== selected.req.centralId || invite.codeHash !== selected.req.codeHash || invite.usedAt || new Date(invite.expiresAt).getTime() <= Date.now()) throw new Error("O convite foi utilizado, expirou ou não corresponde à solicitação.");
-    const importedKey = await crypto.subtle.importKey("jwk", selected.req.publicKey, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
-    const proofValid = await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, importedKey, fromB64(selected.req.proof), encoder.encode(selected.req.centralId + "|" + selected.req.deviceId + "|" + selected.req.userId));
-    if (!proofValid) throw new Error("A prova criptográfica do dispositivo é inválida.");
-    const device = {
-      deviceId: selected.req.deviceId, userId: selected.req.userId,
-      username: selected.req.username, displayName: selected.req.displayName,
-      publicKey: selected.req.publicKey, authorizedAt: new Date().toISOString(),
-      status: "active"
-    };
-    devicesFile.devices = Array.isArray(devicesFile.devices) ? devicesFile.devices : [];
-    if (devicesFile.devices.some(d => d.deviceId === device.deviceId)) throw new Error("Este dispositivo já está cadastrado.");
-    devicesFile.devices.push(device);
-    await writeJson(adminDir, "dispositivos.json", devicesFile);
-    invite.usedAt = new Date().toISOString();
-    invite.usedByDeviceId = device.deviceId;
-    await writeJson(inviteDir, selected.req.invitationFile, invite);
-    selected.req.status = "approved";
-    selected.req.approvedAt = new Date().toISOString();
-    await writeJson(requestDir, selected.name, selected.req);
-    renderStatus("Dispositivo autorizado: " + device.deviceId + ". A sincronização de dados ainda será habilitada em etapa posterior.");
-    alert("Dispositivo autorizado. A etapa de sincronização de tarefas e lembretes ainda não está ativa.");
+    const publicUsers=users.map(u=>({id:u.id,name:u.name,username:u.username,role:u.role,active:u.active}));
+    await writeJson(adminDir,"usuarios.json",{schemaVersion:2,updatedAt:new Date().toISOString(),users:publicUsers});
   }
   function renderStatus(message) {
     const el = document.getElementById("zen-central-status");
@@ -355,11 +385,14 @@
     if (!user) { currentUser = null; const b = document.getElementById("zen-central-entry"); if (b) b.remove(); }
   }, 1200);
   window.ZEN_CENTRAL = {
-    version: 1,
+    version: 2,
     setup: setupCentral,
     requestActivation,
+    activateBeforeLogin,
+    checkActivation,
+    publishUsers,
     createInvitation,
     reviewRequests,
-    getStatus: () => ({ connected: !!directory, deviceId: null, stage: "foundation-only" })
+    getStatus: () => ({ connected: !!directory, stage: "device-auth-and-credential-bootstrap" })
   };
 })();
