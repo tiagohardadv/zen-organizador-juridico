@@ -73,3 +73,13 @@ Nesta primeira etapa estão disponíveis:
 - análise e aprovação administrativa de solicitações, com cadastro do dispositivo autorizado.
 
 O módulo é uma fundação e **não sincroniza tarefas, lembretes, usuários ou permissões entre computadores nesta etapa**. O login e os registros atuais continuam locais no navegador. Não migre dados reais nem considere a central pronta para produção. O controle administrativo na interface não substitui as permissões do Google Drive: quem possui acesso direto de edição à pasta pode modificar ou excluir arquivos manualmente. A sincronização de arquivos pelo Drive pode atrasar ou entregar arquivos em ordens diferentes; a próxima etapa deverá implementar protocolo de operações, idempotência, validação e recuperação antes de conectar os dados jurídicos.
+
+
+## Sincronização de tarefas compartilhadas — etapa inicial
+
+A Central ZEN publica tarefas com compartilhamento ativo em operações individuais por dispositivo. O conteúdo das operações usa ECDH P-256, HKDF-SHA-256 e AES-256-GCM; cada envelope é assinado com ECDSA P-256 e verificado pelo destinatário antes de ser aceito.
+
+O recebimento ocorre enquanto o ZEN está aberto, com consulta periódica de 10 segundos. O computador administrador também recebe uma identidade criptográfica de dispositivo quando configura ou reconecta a central. Alterações na lista de compartilhamento geram novas operações; remoções de acesso e exclusões geram operações de revogação. Os arquivos são append-only e separados por dispositivo de origem e destinatário.
+
+**Limitações desta etapa:** tarefas recebidas de outro computador são exibidas em modo de visualização. Edição remota autorizada, fila de solicitações ao proprietário, resolução de conflitos e sincronização de lembretes ainda não estão implementadas. A revogação impede a exibição do registro após o recebimento da operação, mas não apaga cópias ou informações que alguém já tenha visualizado ou extraído. Como as contas continuam disponíveis nos computadores autorizados e os dados descriptografados ficam no armazenamento local do navegador, esta camada não substitui controles de acesso ao próprio computador e ao perfil do navegador. A pasta do Drive deve continuar restrita a dispositivos confiáveis.
+
