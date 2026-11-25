@@ -1153,6 +1153,23 @@ function loadStorage() {
     tasks = JSON.parse(localStorage.getItem(ZEN_AUTH.key("tasks"))) || [];
     reminders = JSON.parse(localStorage.getItem(ZEN_AUTH.key("reminders"))) || [];
     pieceTypes = JSON.parse(localStorage.getItem(ZEN_AUTH.key("types"))) || defaultTypes.slice();
+
+    // Carrega registros que outros usuários compartilharam com esta conta.
+    const currentUser = ZEN_AUTH.getCurrentUser();
+    ZEN_AUTH.getUsers().filter(u => u.active && u.id !== currentUser.id).forEach(owner => {
+      const ownerTasks = JSON.parse(localStorage.getItem("zen_user_" + owner.id + "_tasks") || "[]");
+      ownerTasks.filter(t => Array.isArray(t.sharedWith) && t.sharedWith.some(s => s.userId === currentUser.id))
+        .forEach(t => {
+          const share = t.sharedWith.find(s => s.userId === currentUser.id);
+          tasks.push({ ...t, _sharedOwnerId: owner.id, _sharedPermission: share.permission, _sharedOwnerName: owner.name });
+        });
+      const ownerReminders = JSON.parse(localStorage.getItem("zen_user_" + owner.id + "_reminders") || "[]");
+      ownerReminders.filter(r => Array.isArray(r.sharedWith) && r.sharedWith.some(s => s.userId === currentUser.id))
+        .forEach(r => {
+          const share = r.sharedWith.find(s => s.userId === currentUser.id);
+          reminders.push({ ...r, _sharedOwnerId: owner.id, _sharedPermission: share.permission, _sharedOwnerName: owner.name });
+        });
+    });
     const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME) || "corporate_blue";
     const sel = document.getElementById("theme-selector");
     if (sel) sel.value = savedTheme;
@@ -1164,11 +1181,76 @@ function loadStorage() {
   }
 }
 
+function isRecordOwner(record) { return !!record && !record._sharedOwnerId; }
+function canEditRecord(record) { return isRecordOwner(record) || (record && record._sharedPermission === "edit"); }
+function canDeleteRecord(record) { return isRecordOwner(record); }
+
+function manageSharing(kind, id) {
+  const collection = kind === "task" ? tasks : reminders;
+  const record = collection.find(item => item.id === id);
+  if (!record || !isRecordOwner(record) || !ZEN_AUTH.isAdmin() && !ZEN_AUTH.getCurrentUser()) {
+    if (!record || !isRecordOwner(record)) alert("Somente o proprietário pode gerenciar o compartilhamento.");
+    return;
+  }
+  const me = ZEN_AUTH.getCurrentUser();
+  const candidates = ZEN_AUTH.getUsers().filter(user => user.active && user.id !== me.id);
+  if (!candidates.length) { alert("Ainda não há outros usuários ativos para compartilhar."); return; }
+  const listing = candidates.map(user => user.username + " — " + user.name).join("\n");
+  const username = prompt("Informe o nome de usuário para compartilhar:\n\n" + listing);
+  if (!username) return;
+  const target = candidates.find(user => user.username.toLowerCase() === username.trim().toLowerCase());
+  if (!target) { alert("Usuário não encontrado ou desativado."); return; }
+  record.sharedWith = Array.isArray(record.sharedWith) ? record.sharedWith : [];
+  const existing = record.sharedWith.find(item => item.userId === target.id);
+  if (existing) {
+    const action = prompt("Este registro já está compartilhado com " + target.name + ".\nDigite 1 para alterar permissão, 2 para revogar ou 0 para cancelar.");
+    if (action === "2") record.sharedWith = record.sharedWith.filter(item => item.userId !== target.id);
+    else if (action === "1") {
+      const permission = prompt("Digite V para visualização ou E para edição:", existing.permission === "edit" ? "E" : "V");
+      if (permission && ["V","E","v","e"].includes(permission.trim())) existing.permission = permission.toLowerCase() === "e" ? "edit" : "view";
+      else return;
+    } else return;
+  } else {
+    const permission = prompt("Permissão para " + target.name + ":\nV = somente visualização\nE = visualização e edição", "V");
+    if (!permission || !["V","E","v","e"].includes(permission.trim())) return;
+    record.sharedWith.push({ userId: target.id, permission: permission.toLowerCase() === "e" ? "edit" : "view" });
+  }
+  saveStorage();
+  alert("Compartilhamento atualizado.");
+  if (kind === "task") openTaskDetail(id); else renderTasks();
+}
+
 function saveStorage() {
   try {
-    localStorage.setItem(ZEN_AUTH.key("tasks"), JSON.stringify(tasks));
-    localStorage.setItem(ZEN_AUTH.key("reminders"), JSON.stringify(reminders));
+    const ownTasks = tasks.filter(t => !t._sharedOwnerId);
+    const ownReminders = reminders.filter(r => !r._sharedOwnerId);
+    localStorage.setItem(ZEN_AUTH.key("tasks"), JSON.stringify(ownTasks));
+    localStorage.setItem(ZEN_AUTH.key("reminders"), JSON.stringify(ownReminders));
     localStorage.setItem(ZEN_AUTH.key("types"), JSON.stringify(pieceTypes));
+
+    // Usuários com permissão de edição gravam alterações no registro do proprietário.
+    tasks.filter(t => t._sharedOwnerId && t._sharedPermission === "edit").forEach(shared => {
+      const key = "zen_user_" + shared._sharedOwnerId + "_tasks";
+      const ownerItems = JSON.parse(localStorage.getItem(key) || "[]");
+      const index = ownerItems.findIndex(item => item.id === shared.id);
+      if (index >= 0) {
+        const clean = { ...shared };
+        delete clean._sharedOwnerId; delete clean._sharedPermission; delete clean._sharedOwnerName;
+        ownerItems[index] = clean;
+        localStorage.setItem(key, JSON.stringify(ownerItems));
+      }
+    });
+    reminders.filter(r => r._sharedOwnerId && r._sharedPermission === "edit").forEach(shared => {
+      const key = "zen_user_" + shared._sharedOwnerId + "_reminders";
+      const ownerItems = JSON.parse(localStorage.getItem(key) || "[]");
+      const index = ownerItems.findIndex(item => item.id === shared.id);
+      if (index >= 0) {
+        const clean = { ...shared };
+        delete clean._sharedOwnerId; delete clean._sharedPermission; delete clean._sharedOwnerName;
+        ownerItems[index] = clean;
+        localStorage.setItem(key, JSON.stringify(ownerItems));
+      }
+    });
   } catch (e) {
     console.error("Erro ao salvar storage:", e);
   }
