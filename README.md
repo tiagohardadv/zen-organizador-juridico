@@ -40,7 +40,7 @@ O login organiza o acesso entre usuários do mesmo navegador, mas não criptogra
 
 ## Publicação
 
-O site é servido pelo GitHub Pages a partir da branch main. O arquivo principal é index.html e o módulo de autenticação é auth.js.
+O site é servido pelo GitHub Pages a partir da branch main. O arquivo principal é index.html. Os módulos auxiliares incluem auth.js, local-backup.js, external-backup.js e zen-central.js.
 
 
 ## Restaurar backup de pasta sincronizada
