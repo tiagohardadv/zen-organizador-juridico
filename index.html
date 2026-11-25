@@ -1358,6 +1358,7 @@ function requestNotificationPermission() {
         body: "Alertas ativados. O ZEN avisará sobre prazos de hoje, atrasados e lembretes do dia."
       });
       sendZenDigest("login", "login");
+      startAutomaticNotifications(false);
     } else {
       alert("Permissão de notificação negada pelo navegador.");
     }
