@@ -365,13 +365,32 @@
     if(!user)return;const devices=(reg.devices||[]).filter(d=>d.status==="active"&&d.deviceId!==saved.deviceId&&d.exchangePublicKey),stateKey="zen_central_task_outbox_"+manifest.centralId+"_"+saved.deviceId;
     let prev={};try{prev=JSON.parse(localStorage.getItem(stateKey)||"{}");}catch(_){}const next={};
     for(const record of (records||[]).filter(r=>r&&r.id&&!r._sharedOwnerId&&Array.isArray(r.sharedWith)&&r.sharedWith.length)){
-      const targets=record.sharedWith.filter(x=>x&&x.userId).map(x=>x.userId);if(!targets.length)continue;
-      for(const device of devices){const k=record.id+"|"+device.deviceId,fp=await sha256(JSON.stringify({record,targets}));next[k]={recordId:record.id,deviceId:device.deviceId,fingerprint:fp};
-        if(!prev[k]||prev[k].fingerprint!==fp)await writeTaskOp({kind:"task.snapshot",recordId:record.id,ownerUserId:user.id,ownerName:user.name||user.username,targetUserIds:targets,record},device,manifest,secrets,saved.deviceId);
+      const grants=record.sharedWith.filter(x=>x&&x.userId).map(x=>({userId:x.userId,permission:x.permission==="edit"?"edit":"view"}));const targets=grants.map(x=>x.userId);if(!targets.length)continue;
+      for(const device of devices){const k=record.id+"|"+device.deviceId,fp=await sha256(JSON.stringify({record,grants,schema:2}));next[k]={recordId:record.id,deviceId:device.deviceId,fingerprint:fp};
+        if(!prev[k]||prev[k].fingerprint!==fp)await writeTaskOp({kind:"task.snapshot",recordId:record.id,ownerUserId:user.id,ownerName:user.name||user.username,ownerDeviceId:saved.deviceId,targetUserIds:targets,targetPermissions:grants,record},device,manifest,secrets,saved.deviceId);
       }
     }
     for(const k of Object.keys(prev)){if(next[k])continue;const old=prev[k],device=devices.find(d=>d.deviceId===old.deviceId);if(device)await writeTaskOp({kind:"task.revoke",recordId:old.recordId,ownerUserId:user.id,ownerName:user.name||user.username,targetUserIds:[]},device,manifest,secrets,saved.deviceId);}
     localStorage.setItem(stateKey,JSON.stringify(next));
+  }
+  async function submitTaskEdit(record){
+    if(!record||!record._centralRemote||record._sharedPermission!=="edit")return false;
+    const saved=await loadHandle();if(!saved||!saved.handle||!saved.deviceId)return false;directory=saved.handle;
+    const user=current();if(!user)return false;
+    const manifest=await readJson(await directory.getDirectoryHandle("CENTRAL"),"identificacao.json");
+    const secrets=await loadDeviceSecrets(saved.deviceId);if(!secrets||!secrets.signingPrivateKey)return false;
+    const reg=await readJson(await directory.getDirectoryHandle("ADMIN"),"dispositivos.json");
+    const ownerDevice=(reg.devices||[]).find(d=>d.deviceId===record._centralOwnerDeviceId&&d.status==="active"&&d.exchangePublicKey);
+    if(!ownerDevice)throw new Error("O computador proprietário da tarefa não está disponível na Central.");
+    const clean={...record};["_sharedOwnerId","_sharedOwnerName","_sharedPermission","_centralRemote","_centralOwnerDeviceId","_centralBaseUpdatedAt"].forEach(k=>delete clean[k]);
+    const fingerprint=await sha256(JSON.stringify({record:clean,base:record._centralBaseUpdatedAt||null,userId:user.id}));
+    const key="zen_central_edit_outbox_"+manifest.centralId+"_"+saved.deviceId;
+    let sent={};try{sent=JSON.parse(localStorage.getItem(key)||"{}");}catch(_){}
+    const itemKey=record._sharedOwnerId+"|"+record.id;
+    if(sent[itemKey]===fingerprint)return false;
+    await writeTaskOp({kind:"task.edit.request",requestId:crypto.randomUUID(),recordId:record.id,ownerUserId:record._sharedOwnerId,editorUserId:user.id,baseUpdatedAt:record._centralBaseUpdatedAt||null,record:clean},ownerDevice,manifest,secrets,saved.deviceId);
+    sent[itemKey]=fingerprint;localStorage.setItem(key,JSON.stringify(sent));
+    return true;
   }
   async function syncNow(){
     const stats={deviceId:null,centralId:null,senderFolders:0,authorizedSenders:0,unknownSenders:0,recipientFolders:0,missingRecipientFolders:0,jsonFiles:0,jsonReadErrors:0,alreadyProcessed:0,centralMismatch:0,recipientMismatch:0,senderMismatch:0,signatureInvalid:0,decryptErrors:0,invalidPayload:0,received:0};
@@ -417,12 +436,19 @@
           const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv:fromB64(env.iv)},key,fromB64(env.ciphertext));
           p=JSON.parse(decoder.decode(plain));
         }catch(e){stats.decryptErrors++;console.warn("ZEN Central: falha ao descriptografar operação.",e);continue;}
+        if(p.kind==="task.edit.request"){
+          if(!p.recordId||!p.ownerUserId||!p.editorUserId||!p.record||p.record.id!==p.recordId){stats.invalidPayload++;continue;}
+          if(typeof window.ZEN_APPLY_CENTRAL_EDIT!=="function")continue;
+          let applied=false;try{applied=await window.ZEN_APPLY_CENTRAL_EDIT(p);}catch(e){console.warn("ZEN Central: não foi possível aplicar edição compartilhada.",e);}
+          if(!applied)continue;
+          processed.push(env.operationId);stats.received++;continue;
+        }
         if(!p.recordId||!p.ownerUserId||(p.kind==="task.snapshot"&&(!p.record||!Array.isArray(p.targetUserIds)))){stats.invalidPayload++;continue;}
         const ck=p.ownerUserId+"|"+p.recordId,old=cache.entries[ck];
         if(!old||new Date(env.createdAt).getTime()>=new Date(old.updatedAt||0).getTime()){
           cache.entries[ck]=p.kind==="task.snapshot"
-            ?{record:p.record,ownerUserId:p.ownerUserId,ownerName:p.ownerName,targetUserIds:p.targetUserIds,updatedAt:env.createdAt,deleted:false}
-            :{ownerUserId:p.ownerUserId,targetUserIds:[],updatedAt:env.createdAt,deleted:true};
+            ?{record:p.record,ownerUserId:p.ownerUserId,ownerName:p.ownerName,ownerDeviceId:p.ownerDeviceId,targetUserIds:p.targetUserIds,targetPermissions:Array.isArray(p.targetPermissions)?p.targetPermissions:[],updatedAt:env.createdAt,deleted:false}
+            :{ownerUserId:p.ownerUserId,targetUserIds:[],targetPermissions:[],updatedAt:env.createdAt,deleted:true};
         }
         processed.push(env.operationId);stats.received++;
       }
@@ -432,7 +458,7 @@
     if(stats.received)window.dispatchEvent(new CustomEvent("zen-central-updated",{detail:{received:stats.received}}));
     return stats;
   }
-  function getSharedTasks(userId){if(!userId)return [];return Object.values(taskCache().entries||{}).filter(x=>!x.deleted&&x.record&&Array.isArray(x.targetUserIds)&&x.targetUserIds.includes(userId)).map(x=>({...x.record,_sharedOwnerId:x.ownerUserId,_sharedOwnerName:x.ownerName||"Usuário",_sharedPermission:"view",_centralRemote:true}));}
+  function getSharedTasks(userId){if(!userId)return [];return Object.values(taskCache().entries||{}).filter(x=>!x.deleted&&x.record&&Array.isArray(x.targetUserIds)&&x.targetUserIds.includes(userId)).map(x=>{const grant=(x.targetPermissions||[]).find(g=>g.userId===userId);return {...x.record,_sharedOwnerId:x.ownerUserId,_sharedOwnerName:x.ownerName||"Usuário",_sharedPermission:grant&&grant.permission==="edit"?"edit":"view",_centralRemote:true,_centralOwnerDeviceId:x.ownerDeviceId||null,_centralBaseUpdatedAt:x.record.updatedAt||null};});}
   function startBackgroundSync(){
     if(window.__ZEN_CENTRAL_SYNC_TIMER)return;
     const run=async()=>{
@@ -534,6 +560,7 @@
     checkActivation,
     publishUsers,
     publishTasks,
+    submitTaskEdit,
     syncNow,
     reconnectCentral,
     getSharedTasks,
