@@ -156,7 +156,7 @@
     const request = {
       schemaVersion: 1, requestId: crypto.randomUUID(), centralId: manifest.centralId,
       deviceId, userId: user.id, username: user.username, displayName: user.name,
-      publicKey, proof: b64(new Uint8Array(proof)), invitationFile: invitation.name,
+      publicKey, proof: b64(new Uint8Array(proof)), invitationFile: invitation.name, codeHash,
       requestedAt: new Date().toISOString(), status: "pending"
     };
     const requests = await directory.getDirectoryHandle("SOLICITACOES");
@@ -217,8 +217,12 @@
     if (!selected) return;
     if (!confirm("Autorizar " + selected.req.deviceId + " para o usuário " + selected.req.username + "?")) return;
     const inviteDir = await adminDir.getDirectoryHandle("CONVITES");
+    if (!/^[a-f0-9-]{36}\\.json$/i.test(selected.req.invitationFile || "")) throw new Error("Referência de convite inválida.");
     const invite = await readJson(inviteDir, selected.req.invitationFile);
-    if (invite.usedAt || new Date(invite.expiresAt).getTime() <= Date.now()) throw new Error("O convite foi utilizado ou expirou.");
+    if (invite.centralId !== selected.req.centralId || invite.codeHash !== selected.req.codeHash || invite.usedAt || new Date(invite.expiresAt).getTime() <= Date.now()) throw new Error("O convite foi utilizado, expirou ou não corresponde à solicitação.");
+    const importedKey = await crypto.subtle.importKey("jwk", selected.req.publicKey, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
+    const proofValid = await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, importedKey, fromB64(selected.req.proof), encoder.encode(selected.req.centralId + "|" + selected.req.deviceId + "|" + selected.req.userId));
+    if (!proofValid) throw new Error("A prova criptográfica do dispositivo é inválida.");
     const device = {
       deviceId: selected.req.deviceId, userId: selected.req.userId,
       username: selected.req.username, displayName: selected.req.displayName,
