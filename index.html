@@ -1355,12 +1355,91 @@ function requestNotificationPermission() {
     updateNotificationButtonUI();
     if (permission === "granted") {
       new Notification("ZEN Jurídico", {
-        body: "Notificações ativadas! Você será alertado sobre prazos e lembretes."
+        body: "Alertas ativados. O ZEN avisará sobre prazos de hoje, atrasados e lembretes do dia."
       });
+      checkAutomaticNotifications();
     } else {
       alert("Permissão de notificação negada pelo navegador.");
     }
+  }).catch(error => {
+    console.error("Não foi possível solicitar permissão de notificações:", error);
+    alert("Não foi possível ativar as notificações neste navegador.");
   });
+}
+
+function getLocalDateKey(date) {
+  return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate());
+}
+
+function checkAutomaticNotifications() {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const user = ZEN_AUTH.getCurrentUser();
+  if (!user || localStorage.getItem("zen_terms_accept_v1_" + user.id) !== "accepted") return;
+
+  const now = new Date();
+  const today = startOfDay(now);
+  const todayKey = getLocalDateKey(now);
+  const seenKey = "zen_notifications_seen_v1_" + user.id;
+  let seen = {};
+  try { seen = JSON.parse(localStorage.getItem(seenKey) || "{}") || {}; } catch (e) { seen = {}; }
+
+  const pending = { due: [], overdue: [], reminders: [] };
+  tasks.forEach(task => {
+    if (!task || task.status === STATUS.CONCLUIDO || !task.prazo || task.prazo === "SEM_PRAZO") return;
+    const due = parseDateLocal(task.prazo);
+    if (!due) return;
+    const dueDay = startOfDay(due);
+    const category = dueDay.getTime() < today.getTime() ? "overdue" : dueDay.getTime() === today.getTime() ? "due" : "";
+    if (!category) return;
+    const eventKey = "task:" + task.id + ":" + task.prazo + ":" + category + ":" + todayKey;
+    if (seen[eventKey]) return;
+    pending[category].push({ key: eventKey, title: task.cliente || "Tarefa sem cliente", detail: task.tipoPeca || "Prazo processual" });
+  });
+
+  reminders.forEach(reminder => {
+    if (!reminder || reminder.status === STATUS.CONCLUIDO || !reminder.dataAlvo) return;
+    const due = parseDateLocal(reminder.dataAlvo);
+    if (!due || startOfDay(due).getTime() !== today.getTime()) return;
+    const eventKey = "reminder:" + reminder.id + ":" + reminder.dataAlvo + ":" + todayKey;
+    if (seen[eventKey]) return;
+    pending.reminders.push({ key: eventKey, title: reminder.titulo || "Lembrete", detail: reminder.cliente || reminder.processo || "" });
+  });
+
+  const groups = [
+    { key: "overdue", title: "ZEN Jurídico — Prazos atrasados", label: "prazo(s) atrasado(s)", target: "list" },
+    { key: "due", title: "ZEN Jurídico — Prazos de hoje", label: "prazo(s) vencem hoje", target: "list" },
+    { key: "reminders", title: "ZEN Jurídico — Lembretes de hoje", label: "lembrete(s) para hoje", target: "reminders" }
+  ];
+
+  groups.forEach(group => {
+    const items = pending[group.key];
+    if (!items.length) return;
+    const lines = items.slice(0, 4).map(item => "• " + item.title + (item.detail ? " — " + item.detail : ""));
+    const extra = items.length > 4 ? "\nE mais " + (items.length - 4) + " registro(s)." : "";
+    const body = items.length + " " + group.label + ":\n" + lines.join("\n") + extra;
+    try {
+      const notification = new Notification(group.title, { body, tag: "zen-" + group.key + "-" + todayKey, renotify: false });
+      notification.onclick = function() {
+        window.focus();
+        navigate(null, group.target);
+        notification.close();
+      };
+      items.forEach(item => { seen[item.key] = Date.now(); });
+    } catch (error) {
+      console.error("Falha ao exibir notificação do ZEN:", error);
+    }
+  });
+
+  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  Object.keys(seen).forEach(key => { if (Number(seen[key]) < cutoff) delete seen[key]; });
+  try { localStorage.setItem(seenKey, JSON.stringify(seen)); } catch (e) { console.warn("Não foi possível salvar o histórico de notificações.", e); }
+}
+
+let zenNotificationTimer = null;
+function startAutomaticNotifications() {
+  if (zenNotificationTimer) clearInterval(zenNotificationTimer);
+  checkAutomaticNotifications();
+  zenNotificationTimer = setInterval(checkAutomaticNotifications, 60000);
 }
 
 /* UI Controls */
@@ -2584,7 +2663,7 @@ function populateCompletedFilters(){const t=document.getElementById("completed-t
 function bindExtraFilters(){["completed-search","completed-tribunal","completed-piece","completed-from","completed-to"].forEach(id=>{const e=document.getElementById(id);if(e&&!e.dataset.bound){e.addEventListener("input",renderCompletedTasks);e.addEventListener("change",renderCompletedTasks);e.dataset.bound="1";}});const l=document.getElementById("adm-log-search");if(l&&!l.dataset.bound){l.addEventListener("input",renderAdminLogs);l.dataset.bound="1";}}
 function clearCompletedFilters(){["completed-search","completed-tribunal","completed-piece","completed-from","completed-to"].forEach(id=>{const e=document.getElementById(id);if(e)e.value=id==="completed-tribunal"?"todos":id==="completed-piece"?"todas":"";});renderCompletedTasks();}
 
-function acceptTerms(){const u=ZEN_AUTH.getCurrentUser(),c=document.getElementById("terms-consent-check");if(!u||!c||!c.checked)return alert("Marque a concordância após ler os documentos.");localStorage.setItem("zen_terms_accept_v1_"+u.id,"accepted");zenLog("aceite legal","Política de Privacidade e Termos de Uso");document.querySelectorAll(".sidebar .nav-item").forEach(x=>x.classList.remove("hidden"));refreshAdminMenu();navigate(null,"home");}
+function acceptTerms(){const u=ZEN_AUTH.getCurrentUser(),c=document.getElementById("terms-consent-check");if(!u||!c||!c.checked)return alert("Marque a concordância após ler os documentos.");localStorage.setItem("zen_terms_accept_v1_"+u.id,"accepted");zenLog("aceite legal","Política de Privacidade e Termos de Uso");document.querySelectorAll(".sidebar .nav-item").forEach(x=>x.classList.remove("hidden"));refreshAdminMenu();navigate(null,"home");startAutomaticNotifications();}
 
 /* Init */
 function init() {
@@ -2621,7 +2700,7 @@ function init() {
 
   const u=ZEN_AUTH.getCurrentUser(),accepted=u&&localStorage.getItem("zen_terms_accept_v1_"+u.id)==="accepted";
   const chk=document.getElementById("terms-consent-check"),btn=document.getElementById("terms-accept-button");if(chk&&btn)chk.addEventListener("change",()=>btn.disabled=!chk.checked);
-  if(!accepted){document.querySelectorAll(".sidebar .nav-item").forEach(x=>{if(x.dataset.target!=="terms")x.classList.add("hidden");});navigate(null,"terms");}else navigate(null,"home");
+  if(!accepted){document.querySelectorAll(".sidebar .nav-item").forEach(x=>{if(x.dataset.target!=="terms")x.classList.add("hidden");});navigate(null,"terms");}else { navigate(null,"home"); startAutomaticNotifications(); }
   refreshAdminMenu();populateCompletedFilters();bindExtraFilters();
   const repTrib=document.getElementById("rep-tribunal");if(repTrib){const values=[...new Set(tasks.map(t=>(t.tribunal||"").trim()).filter(Boolean))].sort();values.forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;repTrib.appendChild(o);});}
   zenLog("login","Acesso ao ZEN");
