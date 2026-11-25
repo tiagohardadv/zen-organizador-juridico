@@ -979,6 +979,11 @@
             <input id="file-import-encrypted" type="file" accept=".zen,application/json" style="flex: 1; min-width: 240px;" />
             <button class="btn btn-primary" onclick="importEncryptedBackup()">🔓 Abrir Backup Criptografado</button>
           </div>
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <input id="restore-synced-backup-file" type="file" accept=".zen,application/json" style="display:none" onchange="handleSyncedBackupSelection(this)" />
+            <button class="btn btn-ghost" type="button" onclick="selectSyncedBackup()">☁️ Restaurar backup de pasta sincronizada</button>
+          </div>
+          <p style="font-size:.76rem;color:var(--text-muted);margin:0;">Selecione um arquivo .zen que esteja em uma pasta sincronizada do Google Drive para computador, OneDrive ou Dropbox. Não há conexão com APIs ou acesso automático à conta: a escolha do arquivo é feita pelo seletor do seu computador.</p>
           <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0;">O backup criptografado usa AES-256-GCM. A senha é definida na exportação e não fica salva no navegador. Se perder a senha, não será possível recuperar o conteúdo.</p>
           <div id="import-status" style="font-size: 0.82rem; color: var(--text-muted);"></div>
           <hr style="border: 0; border-top: 1px solid var(--border);" />
@@ -2551,6 +2556,36 @@ function exportCompletedJSON() {
   a.download = `zen_cumpridos_${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function selectSyncedBackup() {
+  const picker = document.getElementById("restore-synced-backup-file");
+  if (!picker) return;
+  picker.value = "";
+  picker.click();
+}
+
+async function handleSyncedBackupSelection(picker) {
+  const file = picker && picker.files && picker.files[0];
+  if (!file) return;
+  const encryptedInput = document.getElementById("file-import-encrypted");
+  const statusEl = document.getElementById("import-status");
+  if (!encryptedInput) {
+    if (statusEl) statusEl.textContent = "Campo de importação criptografada indisponível.";
+    return;
+  }
+  try {
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    encryptedInput.files = transfer.files;
+    if (statusEl) statusEl.textContent = "Arquivo selecionado: " + file.name + ". Informe a senha para continuar.";
+    await importEncryptedBackup();
+  } catch (error) {
+    console.error("Falha ao selecionar backup sincronizado:", error);
+    if (statusEl) statusEl.textContent = "Não foi possível abrir o arquivo selecionado neste navegador.";
+  } finally {
+    picker.value = "";
+  }
 }
 
 function importJSON() {
