@@ -190,7 +190,48 @@
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), usedAt: null
     });
     renderStatus("Convite emitido, válido por 24 horas.");
-    alert("Código de ativação (uso único, válido por 24 horas):\n\n" + code + "\n\nEntregue-o diretamente ao responsável pelo computador.");
+    showInvitationCode(code);
+  }
+  function showInvitationCode(code) {
+    const previous = document.getElementById("zen-central-code-modal");
+    if (previous) previous.remove();
+    const modal = document.createElement("div");
+    modal.id = "zen-central-code-modal";
+    modal.style.cssText = "position:fixed;inset:0;z-index:1000001;background:rgba(15,23,42,.72);display:flex;align-items:center;justify-content:center;padding:18px";
+    modal.innerHTML = '<section style="width:min(100%,440px);background:var(--surface,#fff);color:var(--text,#111827);border:1px solid var(--border,#ddd);border-radius:14px;padding:24px;box-shadow:0 24px 70px rgba(0,0,0,.3);text-align:center">' +
+      '<h2 style="margin:0 0 8px">Código de ativação</h2>' +
+      '<p style="font-size:.85rem;color:var(--text-muted);margin:0 0 16px">Código de uso único. Válido por 24 horas.</p>' +
+      '<div id="zen-central-code-value" style="font-size:1.35rem;font-weight:800;letter-spacing:.09em;padding:15px 10px;border:1px dashed var(--border,#aaa);border-radius:9px;background:var(--surface-subtle,#f5f5f5);user-select:all;overflow-wrap:anywhere"></div>' +
+      '<button type="button" class="btn btn-primary" id="zen-central-copy-code" style="width:100%;margin-top:14px">Copiar código</button>' +
+      '<p id="zen-central-copy-feedback" role="status" style="min-height:1.2em;font-size:.8rem;color:var(--text-muted)"></p>' +
+      '<button type="button" class="btn btn-ghost" id="zen-central-close-code" style="width:100%">Fechar</button>' +
+      '<p style="font-size:.72rem;color:var(--text-muted);margin:12px 0 0">Se a cópia automática não funcionar, selecione o código acima e use Ctrl+C.</p>' +
+      '</section>';
+    document.body.appendChild(modal);
+    modal.querySelector("#zen-central-code-value").textContent = code;
+    const feedback = modal.querySelector("#zen-central-copy-feedback");
+    modal.querySelector("#zen-central-copy-code").onclick = async () => {
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(code);
+        } else {
+          const field = document.createElement("textarea");
+          field.value = code;
+          field.setAttribute("readonly", "");
+          field.style.cssText = "position:fixed;opacity:0;left:-9999px;top:0";
+          document.body.appendChild(field);
+          field.select();
+          const copied = document.execCommand("copy");
+          field.remove();
+          if (!copied) throw new Error("Cópia automática indisponível.");
+        }
+        feedback.textContent = "Código copiado. Agora você pode colá-lo no outro computador.";
+      } catch (_) {
+        feedback.textContent = "Não foi possível copiar automaticamente. Selecione o código e pressione Ctrl+C.";
+      }
+    };
+    modal.querySelector("#zen-central-close-code").onclick = () => modal.remove();
+    modal.addEventListener("click", event => { if (event.target === modal) modal.remove(); });
   }
   async function reviewRequests() {
     if (!isAdmin()) throw new Error("Somente o administrador pode autorizar dispositivos.");
