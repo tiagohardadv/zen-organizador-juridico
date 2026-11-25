@@ -400,6 +400,11 @@
   }
 
   .hidden { display: none !important; }
+  .admin-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin:14px 0}
+  .admin-kpis>div,.admin-panel{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:14px}
+  .admin-kpis span{display:block;color:var(--text-muted);font-size:.76rem;font-weight:600}.admin-kpis strong{display:block;font-size:1.45rem;margin-top:5px}
+  .admin-panel{margin:12px 0}.admin-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.admin-head h3{margin:0;font-size:.98rem}.admin-head p,.admin-muted{margin:4px 0 0;color:var(--text-muted);font-size:.8rem}
+  .admin-tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.admin-tag{display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:var(--surface-subtle);padding:6px 9px;border-radius:7px;font-size:.82rem}.admin-tag button{border:0;background:none;color:var(--danger);font-weight:800;cursor:pointer}
   footer { text-align: center; color: var(--text-muted); padding: 20px 0; font-size: 0.8rem; border-top: 1px solid var(--border); margin-top: 24px; }
 
   /* Impressão Limpa e Otimizada */
@@ -471,12 +476,8 @@
       </button>
       <select id="theme-selector" onchange="changeThemePalette(this.value)" style="padding: 5px 10px; font-size: 0.8rem; width: auto;">
         <option value="corporate_blue">🔵 Azul Corporativo</option>
-        <option value="midnight_dark">🌙 Midnight Dark</option>
         <option value="emerald_law">🌿 Emerald Law</option>
-        <option value="slate_minimal">🏛️ Slate Minimal</option>
-        <option value="soft_blue">🧊 Azul Suave (Fundo Azulado)</option>
-        <option value="rose_elegance">🌸 Rosa Elegance (Fundo Rosé)</option>
-        <option value="sunset_warm">☀️ Sunset Warm (Fundo Areia/Dourado)</option>
+        <option value="rose_elegance">🌸 Rosa Elegance</option>
       </select>
     </div>
   </header>
@@ -519,6 +520,8 @@
         <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
         <span>Backup & Dados</span>
       </div>
+      <div id="admin-nav-divider" class="hidden" style="border-top: 1px solid var(--border); margin: 8px 0;"></div>
+      <div id="admin-nav" class="nav-item hidden" data-target="administration" onclick="navigate(event, 'administration')"><span>⚙️</span><span>Administração</span></div>
       <div style="border-top: 1px solid var(--border); margin: 8px 0;"></div>
       <div class="nav-item" data-target="about" onclick="navigate(event, 'about')">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
@@ -799,6 +802,15 @@
       <!-- TAREFAS FINALIZADAS -->
       <section id="finalizadas" class="card hidden">
         <h2>Prazos Cumpridos <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);">Histórico de entregas e protocolos</span></h2>
+        <div class="controls-bar">
+          <input id="completed-search" type="search" placeholder="Buscar cliente, processo, tribunal ou peça..." style="flex:2;min-width:190px">
+          <select id="completed-tribunal" style="flex:1;min-width:140px"><option value="todos">Todos os tribunais</option></select>
+          <select id="completed-piece" style="flex:1;min-width:140px"><option value="todas">Todas as peças</option></select>
+          <input id="completed-from" type="date" title="Cumprido a partir de" style="flex:1;min-width:130px">
+          <input id="completed-to" type="date" title="Cumprido até" style="flex:1;min-width:130px">
+          <button class="btn btn-ghost" type="button" onclick="clearCompletedFilters()">Limpar filtros</button>
+        </div>
+        <div id="completed-count" style="font-size:.8rem;color:var(--text-muted);margin-bottom:8px"></div>
         <div class="table-container">
           <table>
             <thead>
@@ -955,6 +967,16 @@
         </div>
       </section>
 
+      <section id="administration" class="card hidden">
+        <h2>Administração <span style="font-size:.8rem;font-weight:400;color:var(--text-muted)">Área restrita</span></h2>
+        <div id="admin-denied" class="hidden">Acesso permitido somente a administradores ativos.</div>
+        <div id="admin-content">
+          <div class="admin-kpis"><div><span>Usuários</span><strong id="adm-users-count">0</strong></div><div><span>Administradores ativos</span><strong id="adm-admin-count">0</strong></div><div><span>Tipos de peças</span><strong id="adm-types-count">0</strong></div><div><span>Atividades registradas</span><strong id="adm-logs-count">0</strong></div></div>
+          <div class="admin-panel"><div class="admin-head"><div><h3>Usuários e permissões</h3><p>Gerencie contas, perfis, senhas e status.</p></div><button class="btn btn-primary" onclick="openAdminUsers()">Gerenciar usuários</button></div><div id="adm-user-summary" class="admin-muted"></div></div>
+          <div class="admin-panel"><div class="admin-head"><div><h3>Tipos de peças</h3><p>Inclua e remova opções dos formulários.</p></div><button class="btn btn-primary" onclick="adminAddType()">+ Novo tipo</button></div><div id="adm-types-list" class="admin-tags"></div></div>
+          <div class="admin-panel"><div class="admin-head"><div><h3>Registro de atividades</h3><p>Histórico local de ações relevantes no aplicativo.</p></div><button class="btn btn-ghost" onclick="downloadAdminLogs()">Exportar logs</button></div><input id="adm-log-search" type="search" placeholder="Filtrar logs..." style="margin:10px 0"><div class="table-container"><table><thead><tr><th>Data/hora</th><th>Usuário</th><th>Ação</th><th>Detalhes</th></tr></thead><tbody id="adm-log-rows"></tbody></table></div><p class="admin-muted">Os logs são locais e podem ser alterados por quem tenha acesso técnico ao navegador; não constituem auditoria inviolável.</p></div>
+        </div>
+      </section>
       <!-- SOBRE -->
       <section id="about" class="card hidden">
         <h2>Sobre o ZEN Jurídico</h2>
@@ -964,14 +986,14 @@
 
       <!-- TERMOS -->
       <section id="terms" class="card hidden">
-        <h2>Termos de Uso e Responsabilidade</h2>
-        <div style="max-height: 250px; overflow-y: auto; padding-right: 8px; color: var(--text-muted);">
-          <p>O aplicativo ZEN é fornecido como ferramenta de auxílio gerencial e operacional para controle de prazos. O advogado permanece como único responsável pelo controle tempestivo e cumprimento dos atos processuais.</p>
-          <p>Nenhuma informação é transmitida para servidores externos. Todos os registros permanecem no armazenamento local do dispositivo.</p>
+        <h2>Documentos legais e condições de uso</h2>
+        <p>Leia os documentos abaixo antes de utilizar o aplicativo.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:16px 0">
+          <a class="card" style="margin:0" href="https://tiagohardadv.github.io/zen-organizador-juridico/privacidade.html" target="_blank" rel="noopener noreferrer"><strong>Política de Privacidade ↗</strong><span style="display:block;color:var(--text-muted);font-size:.8rem;margin-top:5px">Tratamento e armazenamento dos dados.</span></a>
+          <a class="card" style="margin:0" href="https://tiagohardadv.github.io/zen-organizador-juridico/termos.html" target="_blank" rel="noopener noreferrer"><strong>Termos de Uso ↗</strong><span style="display:block;color:var(--text-muted);font-size:.8rem;margin-top:5px">Regras e responsabilidades de utilização.</span></a>
         </div>
-        <div style="margin-top: 14px;">
-          <button class="btn btn-primary" onclick="acceptTerms()">Concordar e Acessar</button>
-        </div>
+        <label style="display:flex;align-items:flex-start;gap:9px;font-size:.9rem;margin:18px 0"><input id="terms-consent-check" type="checkbox" style="width:auto;margin-top:3px"><span>Declaro que li e concordo com a Política de Privacidade e os Termos de Uso.</span></label>
+        <button id="terms-accept-button" class="btn btn-primary" onclick="acceptTerms()" disabled>Concordar e acessar o aplicativo</button>
       </section>
 
     </main>
@@ -1033,30 +1055,14 @@ const colorPalettes = {
     bg: "#f8fafc", surface: "#ffffff", surfaceSubtle: "#f1f5f9", border: "#e2e8f0",
     text: "#0f172a", textMuted: "#64748b", accent: "#2563eb", primaryLight: "#eff6ff"
   },
-  midnight_dark: {
-    bg: "#0b0f19", surface: "#111827", surfaceSubtle: "#1f2937", border: "#374151",
-    text: "#f3f4f6", textMuted: "#9ca3af", accent: "#3b82f6", primaryLight: "#1e3a8a33"
-  },
   emerald_law: {
     bg: "#f4fbf7", surface: "#ffffff", surfaceSubtle: "#ecfdf5", border: "#a7f3d0",
     text: "#064e3b", textMuted: "#047857", accent: "#059669", primaryLight: "#d1fae5"
-  },
-  slate_minimal: {
-    bg: "#fafaf9", surface: "#ffffff", surfaceSubtle: "#f5f5f4", border: "#e7e5e4",
-    text: "#1c1917", textMuted: "#78716c", accent: "#57534e", primaryLight: "#e7e5e4"
-  },
-  soft_blue: {
-    bg: "#eef4ff", surface: "#ffffff", surfaceSubtle: "#e0e7ff", border: "#c7d2fe",
-    text: "#1e1b4b", textMuted: "#4338ca", accent: "#4f46e5", primaryLight: "#e0e7ff"
   },
   rose_elegance: {
     bg: "#fff1f2", surface: "#ffffff", surfaceSubtle: "#ffe4e6", border: "#fecdd3",
     text: "#4c0519", textMuted: "#9f1239", accent: "#e11d48", primaryLight: "#ffe4e6"
   },
-  sunset_warm: {
-    bg: "#fffbeb", surface: "#ffffff", surfaceSubtle: "#fef3c7", border: "#fde68a",
-    text: "#78350f", textMuted: "#b45309", accent: "#d97706", primaryLight: "#fef3c7"
-  }
 };
 
 let tasks = [];
@@ -1381,8 +1387,7 @@ function updateTribunalFilterOptions() {
   if (tribunais.includes(currentVal)) sel.value = currentVal;
 }
 
-function addNewPieceType() {
-  const name = prompt("Informe o nome do novo tipo de peça processual:");
+function addNewPieceType(){if(!ZEN_AUTH.isAdmin())return alert("A inclusão de tipos de peças está disponível somente na Administração.");const name=prompt("Informe o nome do novo tipo de peça processual:");
   if (!name || !name.trim()) return;
   const clean = name.trim();
   if (!pieceTypes.includes(clean)) {
@@ -1700,9 +1705,9 @@ function renderCompletedTasks() {
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  const completed = tasks
-    .filter(t => t.status === STATUS.CONCLUIDO)
-    .sort((a, b) => new Date(b.concluidoEm || b.updatedAt) - new Date(a.concluidoEm || a.updatedAt));
+  const q=(document.getElementById("completed-search")?.value||"").toLowerCase().trim(),trib=document.getElementById("completed-tribunal")?.value||"todos",piece=document.getElementById("completed-piece")?.value||"todas",from=document.getElementById("completed-from")?.value||"",to=document.getElementById("completed-to")?.value||"";
+  const completed=tasks.filter(t=>{if(t.status!==STATUS.CONCLUIDO)return false;if(trib!=="todos"&&(t.tribunal||"")!==trib)return false;if(piece!=="todas"&&t.tipoPeca!==piece)return false;const d=t.concluidoEm||(t.updatedAt||"").slice(0,10);if(from&&(!d||d<from))return false;if(to&&(!d||d>to))return false;if(q&&![t.cliente,t.processo,t.tribunal,t.tipoPeca,t.observacoes].some(v=>String(v||"").toLowerCase().includes(q)))return false;return true;}).sort((a,b)=>new Date(b.concluidoEm||b.updatedAt)-new Date(a.concluidoEm||a.updatedAt));
+  const count=document.getElementById("completed-count");if(count)count.textContent=completed.length+" tarefa(s) cumprida(s) encontrada(s).";
 
   if (completed.length === 0) {
     tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 16px;">Nenhum prazo cumprido registrado.</td></tr>`;
@@ -2372,8 +2377,7 @@ function changePageSize(val) {
 }
 
 /* Navegação */
-function navigate(event, targetId) {
-  if (event) event.preventDefault();
+function navigate(event,targetId){if(event)event.preventDefault();const u=ZEN_AUTH.getCurrentUser(),ok=u&&localStorage.getItem("zen_terms_accept_v1_"+u.id)==="accepted";if(!ok&&targetId!=="terms")targetId="terms";if(targetId==="administration"&&!ZEN_AUTH.isAdmin())return alert("Área exclusiva para administradores.");
   document.querySelectorAll(".sidebar .nav-item").forEach(el => {
     if (el.getAttribute("data-target") === targetId) el.classList.add("active");
     else el.classList.remove("active");
@@ -2382,7 +2386,8 @@ function navigate(event, targetId) {
     if (sec.id === targetId) sec.classList.remove("hidden");
     else sec.classList.add("hidden");
   });
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  if(targetId==="administration")renderAdministration();
+  window.scrollTo({top:0,behavior:"smooth"});
 }
 
 /* Import / Export */
@@ -2523,10 +2528,26 @@ function clearAllData() {
   alert("Todos os dados foram limpos.");
 }
 
-function acceptTerms() {
-  localStorage.setItem(STORAGE_KEYS.TERMS, "true");
-  navigate(null, 'home');
-}
+/* Administração e filtros adicionais */
+
+const ZEN_LOG_KEY="zen_admin_logs_v1";
+function zenLog(action,details){try{const u=ZEN_AUTH.getCurrentUser();if(!u)return;const a=JSON.parse(localStorage.getItem(ZEN_LOG_KEY)||"[]");a.unshift({at:new Date().toISOString(),username:u.username,name:u.name,action:String(action).slice(0,80),details:String(details||"").slice(0,250)});localStorage.setItem(ZEN_LOG_KEY,JSON.stringify(a.slice(0,1500)));}catch(e){}}
+function openAdminUsers(){if(!ZEN_AUTH.isAdmin())return alert("Acesso restrito a administradores.");document.getElementById("zen-manage-users")?.click();zenLog("abriu gerenciamento de usuários","");}
+function refreshAdminMenu(){const ok=ZEN_AUTH.isAdmin();document.getElementById("admin-nav")?.classList.toggle("hidden",!ok);document.getElementById("admin-nav-divider")?.classList.toggle("hidden",!ok);}
+function renderAdministration(){const ok=ZEN_AUTH.isAdmin();document.getElementById("admin-content").classList.toggle("hidden",!ok);document.getElementById("admin-denied").classList.toggle("hidden",ok);if(!ok)return;
+const us=ZEN_AUTH.getUsers(),logs=JSON.parse(localStorage.getItem(ZEN_LOG_KEY)||"[]");
+document.getElementById("adm-users-count").textContent=us.length;document.getElementById("adm-admin-count").textContent=us.filter(u=>u.active&&u.role==="admin").length;document.getElementById("adm-types-count").textContent=pieceTypes.length;document.getElementById("adm-logs-count").textContent=logs.length;
+document.getElementById("adm-user-summary").textContent=us.map(u=>u.name+" ("+u.username+") — "+(u.active?"Ativo":"Desativado")+" — "+(u.role==="admin"?"Administrador":"Usuário")).join(" | ");
+const box=document.getElementById("adm-types-list");box.innerHTML="";pieceTypes.forEach(name=>{const tag=document.createElement("span");tag.className="admin-tag";const s=document.createElement("span");s.textContent=name;const b=document.createElement("button");b.textContent="×";b.title="Remover tipo";b.onclick=()=>adminRemoveType(name);tag.append(s,b);box.appendChild(tag);});renderAdminLogs();}
+function adminAddType(){if(!ZEN_AUTH.isAdmin())return alert("Acesso restrito.");const n=prompt("Nome do tipo de peça:");if(!n||!n.trim())return;const v=n.trim().slice(0,120);if(pieceTypes.some(x=>x.toLowerCase()===v.toLowerCase()))return alert("Esse tipo já existe.");pieceTypes.push(v);pieceTypes.sort((a,b)=>a.localeCompare(b,"pt-BR"));saveStorage();renderPieceTypeOptions();renderAdministration();zenLog("tipo de peça incluído",v);}
+function adminRemoveType(n){if(!ZEN_AUTH.isAdmin())return alert("Acesso restrito.");if(tasks.some(t=>t.tipoPeca===n)&&!confirm("Há tarefas antigas com este tipo. Elas serão preservadas, mas a opção deixará de aparecer em novos cadastros. Continuar?"))return;if(!confirm("Remover o tipo \""+n+"\"?"))return;pieceTypes=pieceTypes.filter(x=>x!==n);saveStorage();renderPieceTypeOptions();renderAdministration();zenLog("tipo de peça removido",n);}
+function renderAdminLogs(){const body=document.getElementById("adm-log-rows");if(!body)return;const q=(document.getElementById("adm-log-search")?.value||"").toLowerCase(),logs=JSON.parse(localStorage.getItem(ZEN_LOG_KEY)||"[]").filter(x=>!q||[x.username,x.name,x.action,x.details].join(" ").toLowerCase().includes(q));body.innerHTML="";if(!logs.length){body.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Nenhuma atividade encontrada.</td></tr>';return;}logs.slice(0,400).forEach(x=>{const tr=document.createElement("tr");[formatDateTimeToBR(x.at),x.name+" ("+x.username+")",x.action,x.details].forEach(v=>{const td=document.createElement("td");td.textContent=v||"-";tr.appendChild(td);});body.appendChild(tr);});}
+function downloadAdminLogs(){if(!ZEN_AUTH.isAdmin())return;const blob=new Blob([JSON.stringify(JSON.parse(localStorage.getItem(ZEN_LOG_KEY)||"[]"),null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="zen-logs-"+new Date().toISOString().slice(0,10)+".json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+function populateCompletedFilters(){const t=document.getElementById("completed-tribunal"),p=document.getElementById("completed-piece");if(!t||!p)return;const tv=t.value,pv=p.value;t.innerHTML='<option value="todos">Todos os tribunais</option>';[...new Set(tasks.map(x=>(x.tribunal||"").trim()).filter(Boolean))].sort().forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;t.appendChild(o);});p.innerHTML='<option value="todas">Todas as peças</option>';pieceTypes.forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;p.appendChild(o);});t.value=tv;p.value=pv;}
+function bindExtraFilters(){["completed-search","completed-tribunal","completed-piece","completed-from","completed-to"].forEach(id=>{const e=document.getElementById(id);if(e&&!e.dataset.bound){e.addEventListener("input",renderCompletedTasks);e.addEventListener("change",renderCompletedTasks);e.dataset.bound="1";}});const l=document.getElementById("adm-log-search");if(l&&!l.dataset.bound){l.addEventListener("input",renderAdminLogs);l.dataset.bound="1";}}
+function clearCompletedFilters(){["completed-search","completed-tribunal","completed-piece","completed-from","completed-to"].forEach(id=>{const e=document.getElementById(id);if(e)e.value=id==="completed-tribunal"?"todos":id==="completed-piece"?"todas":"";});renderCompletedTasks();}
+
+function acceptTerms(){const u=ZEN_AUTH.getCurrentUser(),c=document.getElementById("terms-consent-check");if(!u||!c||!c.checked)return alert("Marque a concordância após ler os documentos.");localStorage.setItem("zen_terms_accept_v1_"+u.id,"accepted");zenLog("aceite legal","Política de Privacidade e Termos de Uso");document.querySelectorAll(".sidebar .nav-item").forEach(x=>x.classList.remove("hidden"));navigate(null,"home");}
 
 /* Init */
 function init() {
@@ -2560,12 +2581,10 @@ function init() {
     searchInput.dataset.zenBound = "true";
   }
 
-  const termsAccepted = localStorage.getItem(STORAGE_KEYS.TERMS) === "true";
-  if (!termsAccepted) {
-    navigate(null, 'terms');
-  } else {
-    navigate(null, 'home');
-  }
+  const u=ZEN_AUTH.getCurrentUser(),accepted=u&&localStorage.getItem("zen_terms_accept_v1_"+u.id)==="accepted";
+  const chk=document.getElementById("terms-consent-check"),btn=document.getElementById("terms-accept-button");if(chk&&btn)chk.addEventListener("change",()=>btn.disabled=!chk.checked);
+  if(!accepted){document.querySelectorAll(".sidebar .nav-item").forEach(x=>{if(x.dataset.target!=="terms")x.classList.add("hidden");});navigate(null,"terms");}else navigate(null,"home");
+  refreshAdminMenu();populateCompletedFilters();bindExtraFilters();
 }
 
 window.addEventListener("DOMContentLoaded", () => ZEN_AUTH.boot(init));
