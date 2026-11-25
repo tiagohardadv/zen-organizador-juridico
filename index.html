@@ -1357,7 +1357,7 @@ function requestNotificationPermission() {
       new Notification("ZEN Jurídico", {
         body: "Alertas ativados. O ZEN avisará sobre prazos de hoje, atrasados e lembretes do dia."
       });
-      checkAutomaticNotifications();
+      sendZenDigest("login", "login");
     } else {
       alert("Permissão de notificação negada pelo navegador.");
     }
@@ -1371,77 +1371,86 @@ function getLocalDateKey(date) {
   return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate());
 }
 
-function checkAutomaticNotifications() {
-  if (!("Notification" in window) || Notification.permission !== "granted") return;
-  const user = ZEN_AUTH.getCurrentUser();
-  if (!user || localStorage.getItem("zen_terms_accept_v1_" + user.id) !== "accepted") return;
-
-  const now = new Date();
-  const today = startOfDay(now);
-  const todayKey = getLocalDateKey(now);
-  const seenKey = "zen_notifications_seen_v1_" + user.id;
-  let seen = {};
-  try { seen = JSON.parse(localStorage.getItem(seenKey) || "{}") || {}; } catch (e) { seen = {}; }
-
-  const pending = { due: [], overdue: [], reminders: [] };
+function getLocalDateKey(date) {
+  return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate());
+}
+function collectNotificationItems() {
+  const today = startOfDay(new Date());
+  const result = { due: [], overdue: [], reminders: [] };
   tasks.forEach(task => {
     if (!task || task.status === STATUS.CONCLUIDO || !task.prazo || task.prazo === "SEM_PRAZO") return;
     const due = parseDateLocal(task.prazo);
     if (!due) return;
-    const dueDay = startOfDay(due);
-    const category = dueDay.getTime() < today.getTime() ? "overdue" : dueDay.getTime() === today.getTime() ? "due" : "";
-    if (!category) return;
-    const eventKey = "task:" + task.id + ":" + task.prazo + ":" + category + ":" + todayKey;
-    if (seen[eventKey]) return;
-    pending[category].push({ key: eventKey, title: task.cliente || "Tarefa sem cliente", detail: task.tipoPeca || "Prazo processual" });
+    const day = startOfDay(due);
+    const category = day.getTime() < today.getTime() ? "overdue" : day.getTime() === today.getTime() ? "due" : "";
+    if (category) result[category].push({ title: task.cliente || "Tarefa sem cliente", detail: task.tipoPeca || "Prazo processual" });
   });
-
   reminders.forEach(reminder => {
     if (!reminder || reminder.status === STATUS.CONCLUIDO || !reminder.dataAlvo) return;
     const due = parseDateLocal(reminder.dataAlvo);
-    if (!due || startOfDay(due).getTime() !== today.getTime()) return;
-    const eventKey = "reminder:" + reminder.id + ":" + reminder.dataAlvo + ":" + todayKey;
-    if (seen[eventKey]) return;
-    pending.reminders.push({ key: eventKey, title: reminder.titulo || "Lembrete", detail: reminder.cliente || reminder.processo || "" });
+    if (due && startOfDay(due).getTime() === today.getTime())
+      result.reminders.push({ title: reminder.titulo || "Lembrete", detail: reminder.cliente || reminder.processo || "" });
   });
-
+  return result;
+}
+function sendZenDigest(reason, slotKey) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const user = ZEN_AUTH.getCurrentUser();
+  if (!user) return;
+  const dateKey = getLocalDateKey(new Date());
+  const storageKey = "zen_notifications_seen_v2_" + user.id;
+  let sent = {};
+  try { sent = JSON.parse(localStorage.getItem(storageKey) || "{}") || {}; } catch (e) { sent = {}; }
+  const uniqueKey = dateKey + ":" + slotKey;
+  if (sent[uniqueKey]) return;
+  const items = collectNotificationItems();
   const groups = [
-    { key: "overdue", title: "ZEN Jurídico — Prazos atrasados", label: "prazo(s) atrasado(s)", target: "list" },
-    { key: "due", title: "ZEN Jurídico — Prazos de hoje", label: "prazo(s) vencem hoje", target: "list" },
-    { key: "reminders", title: "ZEN Jurídico — Lembretes de hoje", label: "lembrete(s) para hoje", target: "reminders" }
+    { key: "overdue", label: "atrasado(s)" },
+    { key: "due", label: "com prazo hoje" },
+    { key: "reminders", label: "lembrete(s) para hoje" }
   ];
-
+  const total = groups.reduce((sum, group) => sum + items[group.key].length, 0);
+  if (!total && reason !== "login") {
+    sent[uniqueKey] = Date.now();
+    localStorage.setItem(storageKey, JSON.stringify(sent));
+    return;
+  }
+  const lines = [];
   groups.forEach(group => {
-    const items = pending[group.key];
-    if (!items.length) return;
-    const lines = items.slice(0, 4).map(item => "• " + item.title + (item.detail ? " — " + item.detail : ""));
-    const extra = items.length > 4 ? "\nE mais " + (items.length - 4) + " registro(s)." : "";
-    const body = items.length + " " + group.label + ":\n" + lines.join("\n") + extra;
-    try {
-      const notification = new Notification(group.title, { body, tag: "zen-" + group.key + "-" + todayKey, renotify: false });
-      notification.onclick = function() {
-        window.focus();
-        navigate(null, group.target);
-        notification.close();
-      };
-      items.forEach(item => { seen[item.key] = Date.now(); });
-    } catch (error) {
-      console.error("Falha ao exibir notificação do ZEN:", error);
-    }
+    const list = items[group.key];
+    if (!list.length) return;
+    lines.push(list.length + " " + group.label + ":");
+    list.slice(0, 3).forEach(item => lines.push("• " + item.title + (item.detail ? " — " + item.detail : "")));
+    if (list.length > 3) lines.push("E mais " + (list.length - 3) + " registro(s).");
   });
-
-  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  Object.keys(seen).forEach(key => { if (Number(seen[key]) < cutoff) delete seen[key]; });
-  try { localStorage.setItem(seenKey, JSON.stringify(seen)); } catch (e) { console.warn("Não foi possível salvar o histórico de notificações.", e); }
+  const body = total ? lines.join("\n") : "Você entrou no ZEN. Não há prazos vencendo hoje, atrasados ou lembretes para hoje.";
+  try {
+    const notification = new Notification(reason === "login" ? "ZEN Jurídico — Resumo ao entrar" : "ZEN Jurídico — " + reason, {
+      body, tag: "zen-" + uniqueKey, renotify: false
+    });
+    notification.onclick = function() { window.focus(); navigate(null, "home"); notification.close(); };
+    sent[uniqueKey] = Date.now();
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    Object.keys(sent).forEach(key => { if (Number(sent[key]) < cutoff) delete sent[key]; });
+    localStorage.setItem(storageKey, JSON.stringify(sent));
+  } catch (error) { console.error("Falha ao exibir notificação do ZEN:", error); }
 }
-
+const ZEN_NOTIFICATION_TIMES = ["09:00", "11:00", "15:00", "16:30"];
 let zenNotificationTimer = null;
-function startAutomaticNotifications() {
-  if (zenNotificationTimer) clearInterval(zenNotificationTimer);
-  checkAutomaticNotifications();
-  zenNotificationTimer = setInterval(checkAutomaticNotifications, 60000);
+function checkScheduledNotifications() {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const user = ZEN_AUTH.getCurrentUser();
+  if (!user || localStorage.getItem("zen_terms_accept_v1_" + user.id) !== "accepted") return;
+  const now = new Date(), currentTime = pad(now.getHours()) + ":" + pad(now.getMinutes());
+  if (ZEN_NOTIFICATION_TIMES.includes(currentTime)) sendZenDigest("Resumo das " + currentTime, "schedule-" + currentTime);
 }
-
+function startAutomaticNotifications(isExplicitLogin) {
+  if (zenNotificationTimer) clearInterval(zenNotificationTimer);
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  if (isExplicitLogin) sendZenDigest("login", "login");
+  checkScheduledNotifications();
+  zenNotificationTimer = setInterval(checkScheduledNotifications, 15000);
+}
 /* UI Controls */
 function renderPieceTypeOptions() {
   const sel = document.getElementById("tipo-peca");
@@ -2663,7 +2672,7 @@ function populateCompletedFilters(){const t=document.getElementById("completed-t
 function bindExtraFilters(){["completed-search","completed-tribunal","completed-piece","completed-from","completed-to"].forEach(id=>{const e=document.getElementById(id);if(e&&!e.dataset.bound){e.addEventListener("input",renderCompletedTasks);e.addEventListener("change",renderCompletedTasks);e.dataset.bound="1";}});const l=document.getElementById("adm-log-search");if(l&&!l.dataset.bound){l.addEventListener("input",renderAdminLogs);l.dataset.bound="1";}}
 function clearCompletedFilters(){["completed-search","completed-tribunal","completed-piece","completed-from","completed-to"].forEach(id=>{const e=document.getElementById(id);if(e)e.value=id==="completed-tribunal"?"todos":id==="completed-piece"?"todas":"";});renderCompletedTasks();}
 
-function acceptTerms(){const u=ZEN_AUTH.getCurrentUser(),c=document.getElementById("terms-consent-check");if(!u||!c||!c.checked)return alert("Marque a concordância após ler os documentos.");localStorage.setItem("zen_terms_accept_v1_"+u.id,"accepted");zenLog("aceite legal","Política de Privacidade e Termos de Uso");document.querySelectorAll(".sidebar .nav-item").forEach(x=>x.classList.remove("hidden"));refreshAdminMenu();navigate(null,"home");startAutomaticNotifications();}
+function acceptTerms(){const u=ZEN_AUTH.getCurrentUser(),c=document.getElementById("terms-consent-check");if(!u||!c||!c.checked)return alert("Marque a concordância após ler os documentos.");localStorage.setItem("zen_terms_accept_v1_"+u.id,"accepted");zenLog("aceite legal","Política de Privacidade e Termos de Uso");document.querySelectorAll(".sidebar .nav-item").forEach(x=>x.classList.remove("hidden"));refreshAdminMenu();navigate(null,"home");startAutomaticNotifications(ZEN_AUTH.wasExplicitLogin());}
 
 /* Init */
 function init() {
