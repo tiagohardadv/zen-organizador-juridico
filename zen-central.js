@@ -541,7 +541,7 @@
       await writable.close();
       const files=[];
       for await(const [filename,entry] of ctx.deviceDir.entries()) {
-        const m=/^zen_[A-F0-9-]+_(\d{4}-\d{2}-\d{2})\.zen$/i.exec(filename);
+        const m=/^zen_PC-[A-F0-9]{8,}_(\d{4}-\d{2}-\d{2})\.zen$/i.exec(filename);
         if(entry.kind==="file"&&m)files.push({name:filename,date:m[1]});
       }
       files.sort((a,b)=>b.date.localeCompare(a.date));
