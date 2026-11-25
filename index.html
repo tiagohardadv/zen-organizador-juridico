@@ -1357,7 +1357,7 @@ function saveStorage() {
     if (window.ZEN_CENTRAL && ZEN_CENTRAL.publishTasks) ZEN_CENTRAL.publishTasks(ownTasks).catch(e => console.warn("ZEN Central: falha ao publicar tarefas.", e));
     if (window.ZEN_CENTRAL && ZEN_CENTRAL.submitTaskEdit) {
       tasks.filter(t => t._centralRemote && canEditRecord(t)).forEach(shared => {
-        ZEN_CENTRAL.submitTaskEdit(shared).catch(e => { console.warn("ZEN Central: falha ao enviar solicitação de edição.", e); showToast(e.message || "Não foi possível enviar a edição."); });
+        ZEN_CENTRAL.submitTaskEdit(shared).then(sent => { if (sent) showToast("Solicitação de edição enviada ao computador proprietário."); }).catch(e => { console.warn("ZEN Central: falha ao enviar solicitação de edição.", e); showToast(e.message || "Não foi possível enviar a edição."); });
       });
     }
     if (window.ZEN_LOCAL_BACKUP) window.ZEN_LOCAL_BACKUP.capture("alteracao");
