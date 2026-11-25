@@ -485,8 +485,7 @@
     if (!saved || !saved.handle || !saved.deviceId) throw new Error("Este computador ainda não está conectado à Central ZEN.");
     directory = saved.handle;
     if (directory.queryPermission && await directory.queryPermission({mode:"readwrite"}) !== "granted") {
-      const permission = await directory.requestPermission({mode:"readwrite"});
-      if (permission !== "granted") throw new Error("Permissão de gravação na Central ZEN não concedida.");
+      throw new Error("A Central ZEN precisa ser reconectada com permissão de leitura e gravação antes de acessar os backups.");
     }
     const backups = await directory.getDirectoryHandle("BACKUPS", {create:true});
     const userDir = await backups.getDirectoryHandle(user.id, {create:true});
