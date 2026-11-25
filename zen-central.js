@@ -219,7 +219,7 @@
     if(typeof tasks!=="undefined"&&Array.isArray(tasks))await publishTasks(tasks.filter(t=>!t._sharedOwnerId));
     const result=await syncNow();
     startBackgroundSync();
-    renderStatus("Central conectada. "+(result.received||0)+" operação(ões) recebida(s).");
+    renderStatus("Diagnóstico: "+result.received+" recebida(s) · "+result.jsonFiles+" arquivo(s) · "+result.authorizedSenders+" remetente(s) autorizado(s) · "+result.unknownSenders+" remetente(s) desconhecido(s) · "+result.signatureInvalid+" assinatura(s) inválida(s) · "+result.decryptErrors+" falha(s) de descriptografia · "+result.alreadyProcessed+" já processada(s)"+(result.reason?" · "+result.reason:"")+(result.permissionRequired?" · permissão pendente":""));
     return result;
   }
   async function createInvitation() {
@@ -374,29 +374,63 @@
     localStorage.setItem(stateKey,JSON.stringify(next));
   }
   async function syncNow(){
-    const saved=await loadHandle();if(!saved||!saved.handle||!saved.deviceId)return {received:0};directory=saved.handle;
-    if(directory.queryPermission&&await directory.queryPermission({mode:"readwrite"})!=="granted")return {received:0,permissionRequired:true};
-    const manifest=await readJson(await directory.getDirectoryHandle("CENTRAL"),"identificacao.json"),secrets=await loadDeviceSecrets(saved.deviceId),reg=await readJson(await directory.getDirectoryHandle("ADMIN"),"dispositivos.json");
-    if(!secrets)return {received:0};const cache=taskCache();cache.entries=cache.entries||{};const pkey="zen_central_processed_"+saved.deviceId;let processed=[];try{processed=JSON.parse(localStorage.getItem(pkey)||"[]");}catch(_){}let received=0;
+    const stats={deviceId:null,centralId:null,senderFolders:0,authorizedSenders:0,unknownSenders:0,recipientFolders:0,missingRecipientFolders:0,jsonFiles:0,jsonReadErrors:0,alreadyProcessed:0,centralMismatch:0,recipientMismatch:0,senderMismatch:0,signatureInvalid:0,decryptErrors:0,invalidPayload:0,received:0};
+    const saved=await loadHandle();
+    if(!saved||!saved.handle||!saved.deviceId)return {...stats,reason:"dispositivo-nao-vinculado"};
+    directory=saved.handle;stats.deviceId=saved.deviceId;
+    if(directory.queryPermission&&await directory.queryPermission({mode:"readwrite"})!=="granted")return {...stats,permissionRequired:true};
+    const manifest=await readJson(await directory.getDirectoryHandle("CENTRAL"),"identificacao.json");
+    stats.centralId=manifest.centralId;
+    const secrets=await loadDeviceSecrets(saved.deviceId);
+    const reg=await readJson(await directory.getDirectoryHandle("ADMIN"),"dispositivos.json");
+    if(!secrets||!secrets.exchangePrivateKey)return {...stats,reason:"chave-privada-do-dispositivo-ausente"};
+    const cache=taskCache();cache.entries=cache.entries||{};
+    const pkey="zen_central_processed_"+saved.deviceId;
+    let processed=[];try{processed=JSON.parse(localStorage.getItem(pkey)||"[]");}catch(_){}
     const ops=await directory.getDirectoryHandle("OPERACOES",{create:true});
     for await(const [senderId,from] of ops.entries()){
-      if(from.kind!=="directory"||senderId===saved.deviceId)continue;const sender=(reg.devices||[]).find(d=>d.deviceId===senderId&&d.status==="active");if(!sender)continue;
-      let to;try{to=await from.getDirectoryHandle(saved.deviceId);}catch(_){continue;}
+      if(from.kind!=="directory"||senderId===saved.deviceId)continue;
+      stats.senderFolders++;
+      const sender=(reg.devices||[]).find(d=>d.deviceId===senderId&&d.status==="active");
+      if(!sender||!sender.publicKey){stats.unknownSenders++;continue;}
+      stats.authorizedSenders++;
+      let to;try{to=await from.getDirectoryHandle(saved.deviceId);stats.recipientFolders++;}
+      catch(_){stats.missingRecipientFolders++;continue;}
       for await(const [filename,entry] of to.entries()){
-        if(entry.kind!=="file"||!filename.endsWith(".json"))continue;let env;try{env=await readJson(to,filename);}catch(_){continue;}
-        if(processed.includes(env.operationId)||env.centralId!==manifest.centralId||env.recipientDeviceId!==saved.deviceId)continue;
+        if(entry.kind!=="file"||!filename.endsWith(".json"))continue;
+        stats.jsonFiles++;
+        let env;try{env=await readJson(to,filename);}catch(_){stats.jsonReadErrors++;continue;}
+        if(processed.includes(env.operationId)){stats.alreadyProcessed++;continue;}
+        if(env.centralId!==manifest.centralId){stats.centralMismatch++;continue;}
+        if(env.recipientDeviceId!==saved.deviceId){stats.recipientMismatch++;continue;}
+        if(env.senderDeviceId!==senderId){stats.senderMismatch++;continue;}
+        const unsigned={...env};delete unsigned.signature;
+        let signatureOK=false;
         try{
-          const unsigned={...env};delete unsigned.signature;const pub=await crypto.subtle.importKey("jwk",sender.publicKey,{name:"ECDSA",namedCurve:"P-256"},false,["verify"]);
-          if(!await crypto.subtle.verify({name:"ECDSA",hash:"SHA-256"},pub,fromB64(env.signature),encoder.encode(JSON.stringify(unsigned))))continue;
-          const key=await taskOpKey(secrets.exchangePrivateKey,env.ephemeralPublicKey,fromB64(env.salt),manifest.centralId,saved.deviceId),plain=await crypto.subtle.decrypt({name:"AES-GCM",iv:fromB64(env.iv)},key,fromB64(env.ciphertext)),p=JSON.parse(decoder.decode(plain));
-          if(!p.recordId||!p.ownerUserId)continue;const ck=p.ownerUserId+"|"+p.recordId,old=cache.entries[ck];
-          if(!old||new Date(env.createdAt).getTime()>=new Date(old.updatedAt||0).getTime())cache.entries[ck]=p.kind==="task.snapshot"?{record:p.record,ownerUserId:p.ownerUserId,ownerName:p.ownerName,targetUserIds:p.targetUserIds,updatedAt:env.createdAt,deleted:false}:{ownerUserId:p.ownerUserId,targetUserIds:[],updatedAt:env.createdAt,deleted:true};
-          processed.push(env.operationId);received++;
-        }catch(e){console.warn("ZEN Central: operação inválida ignorada.",e);}
+          const pub=await crypto.subtle.importKey("jwk",sender.publicKey,{name:"ECDSA",namedCurve:"P-256"},false,["verify"]);
+          signatureOK=await crypto.subtle.verify({name:"ECDSA",hash:"SHA-256"},pub,fromB64(env.signature),encoder.encode(JSON.stringify(unsigned)));
+        }catch(_){}
+        if(!signatureOK){stats.signatureInvalid++;continue;}
+        let p;
+        try{
+          const key=await taskOpKey(secrets.exchangePrivateKey,env.ephemeralPublicKey,fromB64(env.salt),manifest.centralId,saved.deviceId);
+          const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv:fromB64(env.iv)},key,fromB64(env.ciphertext));
+          p=JSON.parse(decoder.decode(plain));
+        }catch(e){stats.decryptErrors++;console.warn("ZEN Central: falha ao descriptografar operação.",e);continue;}
+        if(!p.recordId||!p.ownerUserId||(p.kind==="task.snapshot"&&(!p.record||!Array.isArray(p.targetUserIds)))){stats.invalidPayload++;continue;}
+        const ck=p.ownerUserId+"|"+p.recordId,old=cache.entries[ck];
+        if(!old||new Date(env.createdAt).getTime()>=new Date(old.updatedAt||0).getTime()){
+          cache.entries[ck]=p.kind==="task.snapshot"
+            ?{record:p.record,ownerUserId:p.ownerUserId,ownerName:p.ownerName,targetUserIds:p.targetUserIds,updatedAt:env.createdAt,deleted:false}
+            :{ownerUserId:p.ownerUserId,targetUserIds:[],updatedAt:env.createdAt,deleted:true};
+        }
+        processed.push(env.operationId);stats.received++;
       }
     }
-    localStorage.setItem("zen_central_shared_tasks_v1",JSON.stringify(cache));localStorage.setItem(pkey,JSON.stringify(processed.slice(-5000)));
-    if(received)window.dispatchEvent(new CustomEvent("zen-central-updated",{detail:{received}}));return {received};
+    localStorage.setItem("zen_central_shared_tasks_v1",JSON.stringify(cache));
+    localStorage.setItem(pkey,JSON.stringify(processed.slice(-5000)));
+    if(stats.received)window.dispatchEvent(new CustomEvent("zen-central-updated",{detail:{received:stats.received}}));
+    return stats;
   }
   function getSharedTasks(userId){if(!userId)return [];return Object.values(taskCache().entries||{}).filter(x=>!x.deleted&&x.record&&Array.isArray(x.targetUserIds)&&x.targetUserIds.includes(userId)).map(x=>({...x.record,_sharedOwnerId:x.ownerUserId,_sharedOwnerName:x.ownerName||"Usuário",_sharedPermission:"view",_centralRemote:true}));}
   function startBackgroundSync(){
