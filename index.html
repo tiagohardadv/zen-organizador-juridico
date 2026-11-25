@@ -912,6 +912,18 @@
               </select>
             </div>
             <div>
+              <label class="label-text">Pesquisar (cliente/processo)</label>
+              <input id="rep-search" type="search" placeholder="Nome, processo ou observação">
+            </div>
+            <div>
+              <label class="label-text">Tribunal</label>
+              <select id="rep-tribunal"><option value="todos">Todos os tribunais</option></select>
+            </div>
+            <div>
+              <label class="label-text">Considerar período por</label>
+              <select id="rep-data-base"><option value="prazo">Prazo / data-alvo</option><option value="cumprimento">Data de cumprimento</option></select>
+            </div>
+            <div>
               <label class="label-text">Ordenar Por</label>
               <select id="rep-ordem">
                 <option value="vencimento">Data de Vencimento / Alvo</option>
@@ -2038,6 +2050,9 @@ function generateReport(e) {
   const statusFiltro = document.getElementById("rep-status").value;
   const pecaFiltro = document.getElementById("rep-peca").value;
   const ordem = document.getElementById("rep-ordem").value;
+  const dataBase = document.getElementById("rep-data-base")?.value || "prazo";
+  const search = (document.getElementById("rep-search")?.value || "").trim().toLowerCase();
+  const tribunalFiltro = document.getElementById("rep-tribunal")?.value || "todos";
   const dataIni = document.getElementById("rep-data-ini").value;
   const dataFim = document.getElementById("rep-data-fim").value;
 
@@ -2078,10 +2093,11 @@ function generateReport(e) {
 
       if (pecaFiltro !== "todas" && t.tipoPeca !== pecaFiltro) return false;
 
-      const refDate = ordem === "cumprimento" ? t.concluidoEm : t.prazo;
-      if (dataIni && refDate && refDate < dataIni) return false;
-      if (dataFim && refDate && refDate > dataFim) return false;
-
+      const refDate = dataBase === "cumprimento" ? t.concluidoEm : t.prazo;
+      if (dataIni && (!refDate || refDate < dataIni)) return false;
+      if (dataFim && (!refDate || refDate > dataFim)) return false;
+      if (tribunalFiltro !== "todos" && (t.tribunal || "") !== tribunalFiltro) return false;
+      if (search && ![t.cliente,t.processo,t.tribunal,t.tipoPeca,t.observacoes].some(v => String(v || "").toLowerCase().includes(search))) return false;
       return true;
     });
 
@@ -2149,9 +2165,9 @@ function generateReport(e) {
       if (statusFiltro === "pendente" && r.status === STATUS.CONCLUIDO) return false;
       if (statusFiltro === "concluido" && r.status !== STATUS.CONCLUIDO) return false;
 
-      if (dataIni && r.dataAlvo && r.dataAlvo < dataIni) return false;
-      if (dataFim && r.dataAlvo && r.dataAlvo > dataFim) return false;
-
+      if (dataIni && (!r.dataAlvo || r.dataAlvo < dataIni)) return false;
+      if (dataFim && (!r.dataAlvo || r.dataAlvo > dataFim)) return false;
+      if (search && ![r.titulo,r.cliente,r.processo,r.obs].some(v => String(v || "").toLowerCase().includes(search))) return false;
       return true;
     });
 
@@ -2532,7 +2548,7 @@ function clearAllData() {
 
 const ZEN_LOG_KEY="zen_admin_logs_v1";
 function zenLog(action,details){try{const u=ZEN_AUTH.getCurrentUser();if(!u)return;const a=JSON.parse(localStorage.getItem(ZEN_LOG_KEY)||"[]");a.unshift({at:new Date().toISOString(),username:u.username,name:u.name,action:String(action).slice(0,80),details:String(details||"").slice(0,250)});localStorage.setItem(ZEN_LOG_KEY,JSON.stringify(a.slice(0,1500)));}catch(e){}}
-function openAdminUsers(){if(!ZEN_AUTH.isAdmin())return alert("Acesso restrito a administradores.");document.getElementById("zen-manage-users")?.click();zenLog("abriu gerenciamento de usuários","");}
+function openAdminUsers(){if(!ZEN_AUTH.isAdmin())return alert("Acesso restrito a administradores.");ZEN_AUTH.openAdmin();zenLog("abriu gerenciamento de usuários","");}
 function refreshAdminMenu(){const ok=ZEN_AUTH.isAdmin();document.getElementById("admin-nav")?.classList.toggle("hidden",!ok);document.getElementById("admin-nav-divider")?.classList.toggle("hidden",!ok);}
 function renderAdministration(){const ok=ZEN_AUTH.isAdmin();document.getElementById("admin-content").classList.toggle("hidden",!ok);document.getElementById("admin-denied").classList.toggle("hidden",ok);if(!ok)return;
 const us=ZEN_AUTH.getUsers(),logs=JSON.parse(localStorage.getItem(ZEN_LOG_KEY)||"[]");
@@ -2557,6 +2573,7 @@ function init() {
   updateTribunalFilterOptions();
   renderHome();
   renderTasks();
+  renderCompletedTasks();
   renderReminders();
   renderCalendar();
   updateNotificationButtonUI();
@@ -2585,6 +2602,8 @@ function init() {
   const chk=document.getElementById("terms-consent-check"),btn=document.getElementById("terms-accept-button");if(chk&&btn)chk.addEventListener("change",()=>btn.disabled=!chk.checked);
   if(!accepted){document.querySelectorAll(".sidebar .nav-item").forEach(x=>{if(x.dataset.target!=="terms")x.classList.add("hidden");});navigate(null,"terms");}else navigate(null,"home");
   refreshAdminMenu();populateCompletedFilters();bindExtraFilters();
+  const repTrib=document.getElementById("rep-tribunal");if(repTrib){const values=[...new Set(tasks.map(t=>(t.tribunal||"").trim()).filter(Boolean))].sort();values.forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;repTrib.appendChild(o);});}
+  zenLog("login","Acesso ao ZEN");
 }
 
 window.addEventListener("DOMContentLoaded", () => ZEN_AUTH.boot(init));
