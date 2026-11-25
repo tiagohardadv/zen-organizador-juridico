@@ -2419,8 +2419,8 @@ function importJSON() {
     try {
       const data = JSON.parse(e.target.result);
       if (!data || !Array.isArray(data.tasks) || data.tasks.length > 10000 ||
-          (data.reminders !== undefined && !Array.isArray(data.reminders)) ||
-          (data.pieceTypes !== undefined && !Array.isArray(data.pieceTypes))) {
+          (data.reminders !== undefined && (!Array.isArray(data.reminders) || data.reminders.length > 10000)) ||
+          (data.pieceTypes !== undefined && (!Array.isArray(data.pieceTypes) || data.pieceTypes.length > 500))) {
         statusEl.textContent = "Arquivo JSON inválido ou incompatível.";
         return;
       }
@@ -2433,7 +2433,7 @@ function importJSON() {
       const cleanText = (value, max) => typeof value === "string" ? value.slice(0, max) : "";
       data.tasks.forEach(t => {
         if (!t || typeof t !== "object" || Array.isArray(t)) return;
-        const id = typeof t.id === "string" && t.id.length <= 160 ? t.id : "";
+        const id = typeof t.id === "string" && /^[A-Za-z0-9_-]{1,160}$/.test(t.id) ? t.id : "";
         if (id && existingIds.has(id)) return;
         const safeId = id || (String(Date.now()) + "_" + Math.random().toString(16).slice(2));
         tasks.push({
@@ -2459,7 +2459,7 @@ function importJSON() {
 
       (data.reminders || []).forEach(r => {
         if (!r || typeof r !== "object" || Array.isArray(r)) return;
-        const id = typeof r.id === "string" && r.id.length <= 160 ? r.id : "";
+        const id = typeof r.id === "string" && /^[A-Za-z0-9_-]{1,160}$/.test(r.id) ? r.id : "";
         if (id && existingRemIds.has(id)) return;
         const safeId = id || (String(Date.now()) + "_r_" + Math.random().toString(16).slice(2));
         reminders.push({
