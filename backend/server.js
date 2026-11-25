@@ -17,7 +17,7 @@ app.set("trust proxy", 1);
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(cors({
   origin(origin, callback) {
-    const allowed = process.env.FRONTEND_URL;
+    const allowed = FRONTEND_URL ? new URL(FRONTEND_URL).origin : null;
     if (!origin || origin === allowed) return callback(null, true);
     return callback(new Error("Origem não autorizada."), false);
   },
