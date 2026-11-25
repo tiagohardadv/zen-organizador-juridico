@@ -2570,7 +2570,7 @@ function populateCompletedFilters(){const t=document.getElementById("completed-t
 function bindExtraFilters(){["completed-search","completed-tribunal","completed-piece","completed-from","completed-to"].forEach(id=>{const e=document.getElementById(id);if(e&&!e.dataset.bound){e.addEventListener("input",renderCompletedTasks);e.addEventListener("change",renderCompletedTasks);e.dataset.bound="1";}});const l=document.getElementById("adm-log-search");if(l&&!l.dataset.bound){l.addEventListener("input",renderAdminLogs);l.dataset.bound="1";}}
 function clearCompletedFilters(){["completed-search","completed-tribunal","completed-piece","completed-from","completed-to"].forEach(id=>{const e=document.getElementById(id);if(e)e.value=id==="completed-tribunal"?"todos":id==="completed-piece"?"todas":"";});renderCompletedTasks();}
 
-function acceptTerms(){const u=ZEN_AUTH.getCurrentUser(),c=document.getElementById("terms-consent-check");if(!u||!c||!c.checked)return alert("Marque a concordância após ler os documentos.");localStorage.setItem("zen_terms_accept_v1_"+u.id,"accepted");zenLog("aceite legal","Política de Privacidade e Termos de Uso");document.querySelectorAll(".sidebar .nav-item").forEach(x=>x.classList.remove("hidden"));navigate(null,"home");}
+function acceptTerms(){const u=ZEN_AUTH.getCurrentUser(),c=document.getElementById("terms-consent-check");if(!u||!c||!c.checked)return alert("Marque a concordância após ler os documentos.");localStorage.setItem("zen_terms_accept_v1_"+u.id,"accepted");zenLog("aceite legal","Política de Privacidade e Termos de Uso");document.querySelectorAll(".sidebar .nav-item").forEach(x=>x.classList.remove("hidden"));refreshAdminMenu();navigate(null,"home");}
 
 /* Init */
 function init() {
