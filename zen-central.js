@@ -205,6 +205,23 @@
     if(saved&&saved.deviceId)return checkActivation();
     return requestActivation();
   }
+  async function reconnectCentral(){
+    const saved=await loadHandle();
+    if(!saved||!saved.handle)throw new Error("Este computador ainda não tem uma pasta Central ZEN vinculada. Conecte a pasta novamente.");
+    directory=saved.handle;
+    if(directory.requestPermission){
+      let permission=await directory.queryPermission({mode:"readwrite"});
+      if(permission!=="granted")permission=await directory.requestPermission({mode:"readwrite"});
+      if(permission!=="granted")throw new Error("Permissão de leitura e gravação na pasta central não concedida.");
+    }
+    const manifest=await readJson(await directory.getDirectoryHandle("CENTRAL"),"identificacao.json");
+    if(!saved.deviceId&&isAdmin())await ensureLocalDeviceIdentity(manifest);
+    if(typeof tasks!=="undefined"&&Array.isArray(tasks))await publishTasks(tasks.filter(t=>!t._sharedOwnerId));
+    const result=await syncNow();
+    startBackgroundSync();
+    renderStatus("Central conectada. "+(result.received||0)+" operação(ões) recebida(s).");
+    return result;
+  }
   async function createInvitation() {
     if (!isAdmin()) throw new Error("Somente o administrador pode emitir convites.");
     if (!directory) {
@@ -424,9 +441,9 @@
     modal.style.cssText = "position:fixed;inset:0;z-index:999990;background:rgba(15,23,42,.62);display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(4px)";
     modal.innerHTML = '<section style="width:min(100%,620px);max-height:90vh;overflow:auto;background:var(--surface,#fff);color:var(--text,#0f172a);border:1px solid var(--border,#ddd);border-radius:14px;padding:22px;box-shadow:0 24px 70px rgba(0,0,0,.25)">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><h2 style="margin:0">Central de Informações ZEN</h2><button class="btn btn-ghost" id="zen-central-close">Fechar</button></div>' +
-      '<p style="color:var(--text-muted);font-size:.86rem;line-height:1.5">Fundação da central compartilhada. Nesta etapa são configuradas a pasta e a autorização de dispositivos. Tarefas, lembretes e autenticação ainda permanecem no armazenamento local.</p>' +
+      '<p style="color:var(--text-muted);font-size:.86rem;line-height:1.5">A Central ZEN sincroniza tarefas compartilhadas entre computadores autorizados. Lembretes e dados particulares permanecem locais. A sincronização ocorre enquanto o aplicativo está aberto e a pasta do Google Drive está disponível.</p>' +
       '<div id="zen-central-status" role="status" style="padding:10px;background:var(--surface-subtle);border:1px solid var(--border);border-radius:8px;font-size:.82rem;margin:12px 0">Nenhuma central conectada nesta sessão.</div>' +
-      (admin ? '<div style="display:grid;gap:9px"><button class="btn btn-primary" id="zen-central-setup">Criar / conectar central (administrador)</button><button class="btn btn-ghost" id="zen-central-invite">Gerar convite de dispositivo</button><button class="btn btn-ghost" id="zen-central-review">Analisar solicitações e autorizar dispositivo</button></div>' : '<div style="display:grid;gap:9px"><button class="btn btn-primary" id="zen-central-request">Conectar e solicitar ativação</button></div>') +
+      (admin ? '<div style="display:grid;gap:9px"><button class="btn btn-primary" id="zen-central-setup">Criar / conectar central (administrador)</button><button class="btn btn-ghost" id="zen-central-invite">Gerar convite de dispositivo</button><button class="btn btn-ghost" id="zen-central-review">Analisar solicitações e autorizar dispositivo</button><button class="btn btn-ghost" id="zen-central-sync">Reconectar / sincronizar agora</button></div>' : '<div style="display:grid;gap:9px"><button class="btn btn-primary" id="zen-central-request">Conectar e solicitar ativação</button><button class="btn btn-ghost" id="zen-central-sync">Reconectar / sincronizar agora</button></div>') +
       '<p style="font-size:.75rem;color:var(--text-muted);margin-top:14px">Acesso à pasta é concedido pelo Google Drive. Os controles internos do ZEN não impedem que alguém com permissão direta de edição altere arquivos manualmente. Não armazene dados reais nesta central experimental até concluir as etapas de segurança e sincronização.</p></section>';
     document.body.appendChild(modal);
     const close = () => modal.remove();
@@ -447,6 +464,8 @@
     if (review) review.onclick = () => run(reviewRequests);
     const request = modal.querySelector("#zen-central-request");
     if (request) request.onclick = () => run(requestActivation);
+    const sync = modal.querySelector("#zen-central-sync");
+    if (sync) sync.onclick = () => run(reconnectCentral);
     (async () => {
       try {
         const saved = await loadHandle();
@@ -481,6 +500,7 @@
     publishUsers,
     publishTasks,
     syncNow,
+    reconnectCentral,
     getSharedTasks,
     createInvitation,
     reviewRequests,
