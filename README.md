@@ -48,6 +48,18 @@ O site é servido pelo GitHub Pages a partir da branch main. O arquivo principal
 Na área “Backup & Dados”, o botão “Restaurar backup de pasta sincronizada” abre o seletor de arquivos do computador para escolher um arquivo .zen salvo em uma pasta sincronizada pelo Google Drive para computador, OneDrive, Dropbox ou outro serviço equivalente. O ZEN não usa API desses serviços, não acessa a conta online e não pesquisa arquivos na nuvem. A pasta precisa estar disponível no computador (ou o arquivo precisa ser baixado previamente). Após selecionar o arquivo, informe a senha; o conteúdo é descriptografado e passa pela confirmação e pelo fluxo de importação já existente, que **mescla** os registros com os dados atuais e evita duplicar IDs existentes. Não substitui nem apaga automaticamente a base atual.
 
 
+## Ativação de computador e credenciais centralizadas
+
+- A tela de primeiro acesso permite solicitar ativação antes de criar uma conta local ou fazer login.
+- O dispositivo seleciona a pasta `ZEN_CENTRAL`, informa o convite de uso único e gera chaves criptográficas próprias.
+- O administrador aprova o dispositivo e o ZEN gera um pacote de credenciais cifrado especificamente para a chave pública daquele computador (ECDH P-256 + HKDF-SHA-256 + AES-256-GCM).
+- A chave privada de troca permanece não exportável no IndexedDB do perfil do navegador do dispositivo.
+- Depois da aprovação, o computador solicita o pacote e importa localmente os usuários, incluindo os verificadores PBKDF2 já existentes. O usuário então entra com a mesma conta e senha cadastradas no PC administrador.
+- Alterações de usuários feitas por um administrador são republicadas em pacotes criptografados para os dispositivos ativos, quando a pasta central está acessível e autorizada.
+- A pasta compartilhada contém metadados públicos dos usuários e pacotes criptografados por dispositivo; não contém a lista de hashes em texto aberto.
+- Esta etapa sincroniza **cadastros e credenciais**, não tarefas, prazos, lembretes, permissões de registros ou sessões. Os dados jurídicos continuam locais em cada computador.
+- A autenticação continua sendo executada no navegador, sem servidor confiável. Um usuário com controle do próprio computador pode inspecionar o armazenamento local e tentar ataques offline contra verificadores de senha; use senhas fortes e restrinja o compartilhamento da pasta do Drive. Isso não equivale a autenticação centralizada por servidor.
+
 ## Central ZEN — fundação experimental
 
 O módulo `zen-central.js` inicia a estrutura da central compartilhada em uma pasta local sincronizada pelo Google Drive para computador. O administrador seleciona a pasta sincronizada; o ZEN cria nela a subpasta `ZEN_CENTRAL`, com diretórios para administração, solicitações de dispositivos, operações, dados, histórico, conflitos e backups.
