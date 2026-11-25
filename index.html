@@ -1753,6 +1753,7 @@ function renderDocumentsTable() {
 function updateDocStatus(taskId, newStatus) {
   const t = tasks.find(item => item.id === taskId);
   if (!t) return;
+  if (!canEditRecord(t)) { alert("Você não tem permissão para alterar este registro."); return; }
   t.docStatus = newStatus;
   t.updatedAt = new Date().toISOString();
   saveStorage();
@@ -1796,9 +1797,9 @@ function renderReminders() {
       <td style="text-align: center;">${statusBadge}</td>
       <td style="text-align: right;">
         <div class="actions-wrapper">
-          <button class="btn btn-ghost" style="padding: 3px 6px; font-size: 0.75rem;" onclick="toggleReminderStatus('${r.id}')">${r.status === STATUS.CONCLUIDO ? 'Reabrir' : 'Concluir'}</button>
-          <button class="btn btn-ghost" style="padding: 3px 6px; font-size: 0.75rem;" onclick="editReminder('${r.id}')">Editar</button>
-          <button class="btn btn-danger" style="padding: 3px 6px; font-size: 0.75rem;" onclick="deleteReminder('${r.id}')">Excluir</button>
+          ${isRecordOwner(r) ? '<button class="btn btn-ghost" style="padding:3px 6px;font-size:.75rem" onclick="manageSharing(\'reminder\', \'' + r.id + '\')">Compartilhar</button>' : '<span style="font-size:.7rem;color:var(--text-muted)">Compartilhado</span>'}
+          ${canEditRecord(r) ? '<button class="btn btn-ghost" style="padding:3px 6px;font-size:.75rem" onclick="toggleReminderStatus(\'' + r.id + '\')">' + (r.status === STATUS.CONCLUIDO ? 'Reabrir' : 'Concluir') + '</button><button class="btn btn-ghost" style="padding:3px 6px;font-size:.75rem" onclick="editReminder(\'' + r.id + '\')">Editar</button>' : ''}
+          ${canDeleteRecord(r) ? '<button class="btn btn-danger" style="padding:3px 6px;font-size:.75rem" onclick="deleteReminder(\'' + r.id + '\')">Excluir</button>' : ''}
         </div>
       </td>
     `;
@@ -1855,6 +1856,7 @@ function handleReminderSubmit(e) {
 function editReminder(id) {
   const r = reminders.find(item => item.id === id);
   if (!r) return;
+  if (!canEditRecord(r)) { alert("Este lembrete é compartilhado apenas para visualização."); return; }
   document.getElementById("rem-id").value = r.id;
   document.getElementById("rem-titulo").value = r.titulo || "";
   document.getElementById("rem-cliente").value = r.cliente || "";
@@ -1868,6 +1870,7 @@ function editReminder(id) {
 function toggleReminderStatus(id) {
   const r = reminders.find(item => item.id === id);
   if (!r) return;
+  if (!canEditRecord(r)) { alert("Você não tem permissão para alterar este lembrete."); return; }
   r.status = r.status === STATUS.CONCLUIDO ? STATUS.PENDENTE : STATUS.CONCLUIDO;
   r.updatedAt = new Date().toISOString();
   saveStorage();
@@ -1877,6 +1880,9 @@ function toggleReminderStatus(id) {
 }
 
 function deleteReminder(id) {
+  const target = reminders.find(r => r.id === id);
+  if (!target) return;
+  if (!canDeleteRecord(target)) { alert("Somente o proprietário pode excluir este lembrete."); return; }
   if (!confirm("Deseja excluir este lembrete?")) return;
   reminders = reminders.filter(r => r.id !== id);
   saveStorage();
@@ -1921,9 +1927,10 @@ function openTaskDetail(id) {
 
   const actionsDiv = document.getElementById("det-actions");
   actionsDiv.innerHTML = `
-    <button class="btn btn-ghost" onclick="editTask('${t.id}')">Editar Prazo</button>
-    <button class="btn btn-primary" onclick="toggleTaskStatus('${t.id}'); openTaskDetail('${t.id}');">${t.status === STATUS.CONCLUIDO ? 'Reabrir Prazo' : 'Marcar como Cumprido'}</button>
-    <button class="btn btn-danger" onclick="if(confirm('Deseja excluir?')) { deleteTask('${t.id}'); navigate(null, 'list'); }">Excluir</button>
+    ${isRecordOwner(t) ? '<button class="btn btn-ghost" onclick="manageSharing(\'task\', \'' + t.id + '\')">Compartilhar</button>' : '<span style="font-size:.75rem;color:var(--text-muted);margin-right:auto">Compartilhado por ' + escapeHtml(t._sharedOwnerName || '') + ' (' + (t._sharedPermission === 'edit' ? 'edição' : 'visualização') + ')</span>'}
+    ${canEditRecord(t) ? '<button class="btn btn-ghost" onclick="editTask(\'' + t.id + '\')">Editar Prazo</button>' : ''}
+    ${canEditRecord(t) ? '<button class="btn btn-primary" onclick="toggleTaskStatus(\'' + t.id + '\'); openTaskDetail(\'' + t.id + '\');">' + (t.status === STATUS.CONCLUIDO ? 'Reabrir Prazo' : 'Marcar como Cumprido') + '</button>' : ''}
+    ${canDeleteRecord(t) ? '<button class="btn btn-danger" onclick="if(confirm(\'Deseja excluir?\')) { deleteTask(\'' + t.id + '\'); navigate(null, \'list\'); }">Excluir</button>' : ''}
   `;
 
   navigate(null, 'task-detail');
@@ -2193,6 +2200,7 @@ function handleFormSubmit(e) {
   if (id) {
     const idx = tasks.findIndex(t => t.id === id);
     if (idx !== -1) {
+      if (!canEditRecord(tasks[idx])) { alert("Você não tem permissão para editar este registro."); return; }
       const oldPedir = tasks[idx].pedirDocumentos;
       const oldDocStatus = tasks[idx].docStatus;
       
@@ -2233,6 +2241,7 @@ function handleFormSubmit(e) {
 function editTask(id) {
   const t = tasks.find(item => item.id === id);
   if (!t) return;
+  if (!canEditRecord(t)) { alert("Este registro é compartilhado apenas para visualização."); return; }
   document.getElementById("task-id").value = t.id;
   document.getElementById("cliente").value = t.cliente || "";
   document.getElementById("telefone").value = t.telefone || "";
@@ -2262,6 +2271,7 @@ function editTask(id) {
 function toggleTaskStatus(id) {
   const t = tasks.find(item => item.id === id);
   if (!t) return;
+  if (!canEditRecord(t)) { alert("Você não tem permissão para alterar este registro."); return; }
   const now = new Date().toISOString();
   if (t.status === STATUS.CONCLUIDO) {
     t.status = STATUS.PENDENTE;
@@ -2278,6 +2288,9 @@ function toggleTaskStatus(id) {
 }
 
 function deleteTask(id) {
+  const target = tasks.find(t => t.id === id);
+  if (!target) return;
+  if (!canDeleteRecord(target)) { alert("Somente o proprietário pode excluir este registro."); return; }
   if (!confirm("Deseja realmente excluir este registro?")) return;
   tasks = tasks.filter(t => t.id !== id);
   saveStorage();
