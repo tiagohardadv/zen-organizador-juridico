@@ -1183,6 +1183,7 @@ function loadStorage() {
     pieceTypes = JSON.parse(localStorage.getItem(ZEN_AUTH.key("types"))) || defaultTypes.slice();
     const globalPieceTypes = JSON.parse(localStorage.getItem("zen_global_piece_types_v1") || "null");
     if (Array.isArray(globalPieceTypes) && globalPieceTypes.length) pieceTypes = globalPieceTypes;
+    else if (ZEN_AUTH.isAdmin()) localStorage.setItem("zen_global_piece_types_v1", JSON.stringify(pieceTypes));
 
     // Carrega registros que outros usuários compartilharam com esta conta.
     const currentUser = ZEN_AUTH.getCurrentUser();
