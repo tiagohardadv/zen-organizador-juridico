@@ -2480,10 +2480,13 @@ function init() {
   updateNotificationButtonUI();
 
   const form = document.getElementById("task-form");
-  if (form) form.addEventListener("submit", handleFormSubmit);
+  if (form && !form.dataset.zenBound) {
+    form.addEventListener("submit", handleFormSubmit);
+    form.dataset.zenBound = "true";
+  }
 
   const searchInput = document.getElementById("search-input");
-  if (searchInput) {
+  if (searchInput && !searchInput.dataset.zenBound) {
     let tmr = null;
     searchInput.addEventListener("input", e => {
       clearTimeout(tmr);
@@ -2493,6 +2496,7 @@ function init() {
         renderTasks();
       }, 150);
     });
+    searchInput.dataset.zenBound = "true";
   }
 
   const termsAccepted = localStorage.getItem(STORAGE_KEYS.TERMS) === "true";
