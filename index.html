@@ -2381,8 +2381,8 @@ function navigate(event, targetId) {
 /* Import / Export */
 function exportJSON() {
   // O backup pertence à conta atual: registros compartilhados não são exportados como se fossem próprios.
-  const ownTasks = tasks.filter(t => isRecordOwner(t));
-  const ownReminders = reminders.filter(r => isRecordOwner(r));
+  const ownTasks = tasks.filter(t => isRecordOwner(t)).map(({ sharedWith, ...record }) => record);
+  const ownReminders = reminders.filter(r => isRecordOwner(r)).map(({ sharedWith, ...record }) => record);
   const data = { version: 5.1, exportDate: new Date().toISOString(), tasks: ownTasks, reminders: ownReminders, pieceTypes };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -2394,7 +2394,7 @@ function exportJSON() {
 }
 
 function exportCompletedJSON() {
-  const completed = tasks.filter(t => isRecordOwner(t) && t.status === STATUS.CONCLUIDO);
+  const completed = tasks.filter(t => isRecordOwner(t) && t.status === STATUS.CONCLUIDO).map(({ sharedWith, ...record }) => record);
   const data = { version: 5.1, exportDate: new Date().toISOString(), tasks: completed };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
