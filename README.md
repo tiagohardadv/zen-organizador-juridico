@@ -41,3 +41,8 @@ O login organiza o acesso entre usuários do mesmo navegador, mas não criptogra
 ## Publicação
 
 O site é servido pelo GitHub Pages a partir da branch main. O arquivo principal é index.html e o módulo de autenticação é auth.js.
+
+
+## Restaurar backup de pasta sincronizada
+
+Na área “Backup & Dados”, o botão “Restaurar backup de pasta sincronizada” abre o seletor de arquivos do computador para escolher um arquivo .zen salvo em uma pasta sincronizada pelo Google Drive para computador, OneDrive, Dropbox ou outro serviço equivalente. O ZEN não usa API desses serviços, não acessa a conta online e não pesquisa arquivos na nuvem. A pasta precisa estar disponível no computador (ou o arquivo precisa ser baixado previamente). Após selecionar o arquivo, informe a senha; o conteúdo é descriptografado e passa pela confirmação e pelo fluxo de importação já existente, que **mescla** os registros com os dados atuais e evita duplicar IDs existentes. Não substitui nem apaga automaticamente a base atual.
