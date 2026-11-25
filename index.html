@@ -1230,7 +1230,7 @@ function loadStorage() {
 function isRecordOwner(record) { return !!record && !record._sharedOwnerId; }
 function canEditRecord(record) {
   if (!record) return false;
-  if (record._centralRemote) return false;
+  if (record._centralRemote) return record._sharedPermission === "edit";
   if (isRecordOwner(record)) return true;
   const me = ZEN_AUTH.getCurrentUser();
   if (!me || !record._sharedOwnerId) return false;
@@ -1241,6 +1241,39 @@ function canEditRecord(record) {
     return !!grant && grant.permission === "edit";
   } catch (_) { return false; }
 }
+window.ZEN_APPLY_CENTRAL_EDIT = async function(payload) {
+  const me = ZEN_AUTH.getCurrentUser();
+  if (!me || !payload || me.id !== payload.ownerUserId) return false;
+  const task = tasks.find(item => item.id === payload.recordId && isRecordOwner(item));
+  if (!task) return false;
+  const grant = Array.isArray(task.sharedWith) ? task.sharedWith.find(item => item.userId === payload.editorUserId) : null;
+  if (!grant || grant.permission !== "edit") {
+    showToast("Edição compartilhada recusada: permissão não localizada.");
+    return true;
+  }
+  if (!payload.baseUpdatedAt || task.updatedAt !== payload.baseUpdatedAt) {
+    showToast("Edição compartilhada não aplicada: a tarefa foi alterada no computador proprietário. Verifique o conflito.");
+    try {
+      const key = "zen_central_edit_conflicts_v1";
+      const conflicts = JSON.parse(localStorage.getItem(key) || "[]");
+      conflicts.unshift({ at: new Date().toISOString(), recordId: task.id, editorUserId: payload.editorUserId, baseUpdatedAt: payload.baseUpdatedAt, currentUpdatedAt: task.updatedAt, requestId: payload.requestId });
+      localStorage.setItem(key, JSON.stringify(conflicts.slice(0, 200)));
+    } catch (_) {}
+    return true;
+  }
+  const fields = ["cliente","telefone","processo","tribunal","tipoPeca","prazo","prioridade","pedirDocumentos","docStatus","observacoes","status","concluidoEm"];
+  fields.forEach(field => {
+    if (Object.prototype.hasOwnProperty.call(payload.record, field)) task[field] = payload.record[field];
+  });
+  task.updatedAt = typeof payload.record.updatedAt === "string" ? payload.record.updatedAt : new Date().toISOString();
+  saveStorage();
+  zenLog("edição compartilhada recebida", task.cliente + (task.processo ? " — " + task.processo : ""));
+  renderHome();
+  renderTasks();
+  renderCalendar();
+  showToast("Edição compartilhada recebida e aplicada.");
+  return true;
+};
 function canDeleteRecord(record) { return isRecordOwner(record); }
 function canViewSharedRecord(record) {
   const me = ZEN_AUTH.getCurrentUser();
@@ -1299,7 +1332,7 @@ function saveStorage() {
     if (ZEN_AUTH.isAdmin()) localStorage.setItem("zen_global_piece_types_v1", JSON.stringify(pieceTypes));
 
     // Usuários com permissão de edição gravam alterações no registro do proprietário.
-    tasks.filter(t => t._sharedOwnerId && canEditRecord(t)).forEach(shared => {
+    tasks.filter(t => t._sharedOwnerId && !t._centralRemote && canEditRecord(t)).forEach(shared => {
       const key = "zen_user_" + shared._sharedOwnerId + "_tasks";
       const ownerItems = JSON.parse(localStorage.getItem(key) || "[]");
       const index = ownerItems.findIndex(item => item.id === shared.id);
@@ -1310,7 +1343,7 @@ function saveStorage() {
         localStorage.setItem(key, JSON.stringify(ownerItems));
       }
     });
-    reminders.filter(r => r._sharedOwnerId && canEditRecord(r)).forEach(shared => {
+    reminders.filter(r => r._sharedOwnerId && !r._centralRemote && canEditRecord(r)).forEach(shared => {
       const key = "zen_user_" + shared._sharedOwnerId + "_reminders";
       const ownerItems = JSON.parse(localStorage.getItem(key) || "[]");
       const index = ownerItems.findIndex(item => item.id === shared.id);
@@ -1322,6 +1355,11 @@ function saveStorage() {
       }
     });
     if (window.ZEN_CENTRAL && ZEN_CENTRAL.publishTasks) ZEN_CENTRAL.publishTasks(ownTasks).catch(e => console.warn("ZEN Central: falha ao publicar tarefas.", e));
+    if (window.ZEN_CENTRAL && ZEN_CENTRAL.submitTaskEdit) {
+      tasks.filter(t => t._centralRemote && canEditRecord(t)).forEach(shared => {
+        ZEN_CENTRAL.submitTaskEdit(shared).catch(e => { console.warn("ZEN Central: falha ao enviar solicitação de edição.", e); showToast(e.message || "Não foi possível enviar a edição."); });
+      });
+    }
     if (window.ZEN_LOCAL_BACKUP) window.ZEN_LOCAL_BACKUP.capture("alteracao");
     if (window.ZEN_EXTERNAL_BACKUP) window.ZEN_EXTERNAL_BACKUP.capture();
   } catch (e) {
@@ -2788,6 +2826,6 @@ function init() {
 window.addEventListener("zen-central-updated", () => { loadStorage(); renderTasks(); renderHome(); renderCalendar(); });
 window.addEventListener("DOMContentLoaded", () => ZEN_AUTH.boot(init));
 </script>
-  <script src="./zen-central.js?v=20261125-10"></script>
+  <script src="./zen-central.js?v=20261125-11"></script>
 </body>
 </html>
