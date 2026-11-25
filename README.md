@@ -14,33 +14,32 @@ Aplicativo web estático publicado pelo GitHub Pages.
 - O proprietário pode compartilhar tarefas e lembretes com permissão de visualização ou edição, podendo alterar ou revogar o compartilhamento.
 - Compartilhamento disponível somente entre contas no mesmo navegador e perfil do dispositivo.
 
-## Sem serviços de nuvem
+## Central compartilhada e armazenamento
 
-O ZEN não utiliza backend, Firestore, Google Drive ou sincronização remota. O código de autenticação e os dados das contas permanecem no navegador. A pasta backend foi removida do projeto porque o salvamento em nuvem foi descontinuado.
+O ZEN continua sendo uma aplicação estática, sem servidor próprio, banco de dados remoto ou autenticação hospedada. As contas e os registros particulares permanecem no armazenamento local de cada navegador. A Central ZEN utiliza uma pasta compartilhada e sincronizada pelo Google Drive para computador para transportar operações de tarefas compartilhadas e armazenar backups criptografados. O Drive é o meio de transporte/armazenamento de arquivos; não é um backend do aplicativo.
 
 ## Migração dos dados existentes
 
 Na primeira configuração da conta administradora, o aplicativo copia os dados antigos das chaves locais do ZEN para o espaço dessa conta. A migração não apaga as chaves antigas. Faça um backup JSON antes de atualizar, por precaução.
 
-## Backups automáticos locais
+## Backups automáticos na Central ZEN
 
-O ZEN mantém até 7 cópias diárias dos dados da conta no IndexedDB do navegador. A cópia é criada ao entrar no sistema, atualizada quando há alterações salvas e verificada periodicamente enquanto o aplicativo permanece aberto. A área “Backup & Dados” informa a data da última cópia e permite restaurar a cópia local mais recente.
+Na janela **Central ZEN**, cada usuário pode ativar/desbloquear, criar manualmente e restaurar backups da própria conta. Os arquivos são gravados em `ZEN_CENTRAL/BACKUPS/<userId>/<deviceId>/` na pasta compartilhada do Google Drive. Cada dispositivo mantém até 7 versões diárias; o arquivo do dia é atualizado quando há alterações salvas e uma nova versão diária é criada enquanto o ZEN permanece aberto.
 
-Essas cópias permanecem no mesmo perfil do navegador e dispositivo. Elas não substituem a exportação periódica de arquivos JSON ou .zen para outro local seguro. O navegador pode limpar dados locais, e a recuperação local não estará disponível se o perfil for apagado ou o dispositivo for perdido.
+O conteúdo inclui tarefas e lembretes próprios do usuário, além dos tipos de peças. Os registros compartilhados de terceiros não são incluídos como se fossem propriedade do usuário. Os backups usam AES-256-GCM e PBKDF2-SHA-256 (310.000 iterações). Cada usuário define uma senha exclusiva de pelo menos 12 caracteres. A senha fica somente na memória durante a sessão e precisa ser informada novamente após recarregar o ZEN ou entrar em outro computador. Para restaurar em outro dispositivo, use a mesma conta e a mesma senha do backup.
 
-### Backup externo em pasta escolhida
+A restauração permite selecionar uma versão de qualquer computador autorizado que tenha acesso à pasta central. O conteúdo é **mesclado** com os registros atuais: IDs já existentes não são sobrescritos nem apagados. Assim, a restauração recupera registros ausentes, mas não reverte alterações de registros que já existam na base atual.
 
-Em Chrome ou Edge atualizado no computador, o usuário pode escolher uma pasta e autorizar o ZEN a gravar nela arquivos diários `.zen` criptografados com AES-256-GCM e PBKDF2-SHA-256. O arquivo do dia é atualizado quando os dados são salvos e o aplicativo mantém até 7 arquivos diários identificados pelo usuário. A limpeza automática alcança somente arquivos `.zen` com o prefixo exclusivo da conta e padrão de data reconhecido.
+Os backups automáticos só são gravados enquanto o ZEN está aberto, o dispositivo está conectado à Central e a pasta sincronizada está acessível e autorizada. O Google Drive pode atrasar a sincronização. Quem tiver permissão direta de edição na pasta pode excluir arquivos manualmente; o ZEN não consegue impedir isso. Restrinja a pasta a computadores e pessoas confiáveis. Se a senha for perdida, o conteúdo criptografado não poderá ser recuperado.
 
-A senha do backup externo não é armazenada: fica apenas na memória enquanto a sessão da página está aberta. Após recarregar o ZEN, pode ser necessário clicar em “Desbloquear / autorizar pasta” e informar novamente a senha; a permissão de acesso à pasta também pode precisar ser renovada. O navegador deve permanecer aberto para que os backups ocorram. Se a pasta estiver em unidade removível, ela precisa estar conectada. Guarde a senha: sem ela, os arquivos não podem ser descriptografados. A API de seleção de pastas não é amplamente suportada em Firefox e Safari; nesses navegadores, utilize o backup local e a exportação manual.
-
+As opções antigas de proteção local no IndexedDB e de backup automático em pasta escolhida pelo usuário deixaram de ser carregadas pelo aplicativo. Os dados já existentes no IndexedDB e os arquivos `.zen` antigos não são apagados por esta atualização. A exportação manual JSON/.zen e a restauração manual de arquivo sincronizado continuam disponíveis como alternativas.
 ## Limites importantes
 
 O login organiza o acesso entre usuários do mesmo navegador, mas não criptografa os registros armazenados no localStorage. Uma pessoa com acesso técnico ao perfil do navegador ou ao dispositivo pode inspecionar ou alterar esses dados. Proteja o dispositivo, o perfil do navegador e os backups. O login local não equivale a uma autenticação com servidor nem protege dados contra um usuário com controle do próprio navegador.
 
 ## Publicação
 
-O site é servido pelo GitHub Pages a partir da branch main. O arquivo principal é index.html. Os módulos auxiliares incluem auth.js, local-backup.js, external-backup.js e zen-central.js.
+O site é servido pelo GitHub Pages a partir da branch main. O arquivo principal é index.html. Os módulos auxiliares incluem auth.js, backup-security.js e zen-central.js. Os módulos legados local-backup.js e external-backup.js permanecem no repositório, mas não são carregados pela aplicação.
 
 
 ## Restaurar backup de pasta sincronizada
