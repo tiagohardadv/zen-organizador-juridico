@@ -97,6 +97,7 @@
         if (!confirm("Esta pasta já contém uma Central ZEN (" + existing.centralId + "). Deseja apenas reconectar?")) return;
         directory = root;
         await saveHandle(root, null);
+        await ensureLocalDeviceIdentity(existing);
         renderStatus("Central existente reconhecida: " + existing.centralId);
         return;
       }
@@ -117,7 +118,8 @@
     await writeJson(admin, "usuarios.json", { schemaVersion: 1, users: [] });
     directory = root;
     await saveHandle(root, null);
-    renderStatus("Central criada: " + centralId + ". A sincronização de registros ainda não foi ativada.");
+    await ensureLocalDeviceIdentity({centralId});
+    renderStatus("Central criada e dispositivo administrador registrado: " + centralId + ".");
     alert("Estrutura da Central ZEN criada com sucesso. Faça uma cópia de segurança da pasta e compartilhe-a somente com os computadores autorizados.");
   }
   async function chooseCentral() {
@@ -196,6 +198,7 @@
     renderStatus("Computador ativado. "+count+" usuário(s) carregado(s).");
     alert("Computador autorizado e usuários carregados. Entre com uma conta cadastrada no computador administrador.");
     if(ZEN_AUTH.showLogin)ZEN_AUTH.showLogin();
+    startBackgroundSync();
     return true;
   }
   async function activateBeforeLogin() {
@@ -315,6 +318,73 @@
     const publicUsers=users.map(u=>({id:u.id,name:u.name,username:u.username,role:u.role,active:u.active}));
     await writeJson(adminDir,"usuarios.json",{schemaVersion:2,updatedAt:new Date().toISOString(),users:publicUsers});
   }
+
+  async function ensureLocalDeviceIdentity(manifest){
+    const saved=await loadHandle();
+    if(saved&&saved.deviceId&&await loadDeviceSecrets(saved.deviceId)){directory=saved.handle;return saved.deviceId;}
+    const deviceId=id(),signing=await crypto.subtle.generateKey({name:"ECDSA",namedCurve:"P-256"},false,["sign","verify"]),exchange=await crypto.subtle.generateKey({name:"ECDH",namedCurve:"P-256"},false,["deriveBits"]);
+    const publicKey=await crypto.subtle.exportKey("jwk",signing.publicKey),exchangePublicKey=await crypto.subtle.exportKey("jwk",exchange.publicKey),db=await openDB();
+    await new Promise((resolve,reject)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).put({key:"device-private-"+deviceId,signingPrivateKey:signing.privateKey,exchangePrivateKey:exchange.privateKey,exchangePublicKey,centralId:manifest.centralId});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});
+    const admin=await directory.getDirectoryHandle("ADMIN");let reg;try{reg=await readJson(admin,"dispositivos.json");}catch(_){reg={devices:[]};}
+    reg.devices=Array.isArray(reg.devices)?reg.devices:[];reg.devices.push({deviceId,deviceLabel:"Computador administrador",publicKey,exchangePublicKey,authorizedAt:new Date().toISOString(),status:"active",adminDevice:true});
+    await writeJson(admin,"dispositivos.json",reg);await saveHandle(directory,deviceId);return deviceId;
+  }
+  async function taskOpKey(privateKey,publicJwk,salt,centralId,deviceId){
+    const pub=await crypto.subtle.importKey("jwk",publicJwk,{name:"ECDH",namedCurve:"P-256"},false,[]),bits=await crypto.subtle.deriveBits({name:"ECDH",public:pub},privateKey,256),mat=await crypto.subtle.importKey("raw",bits,"HKDF",false,["deriveKey"]);
+    return crypto.subtle.deriveKey({name:"HKDF",hash:"SHA-256",salt,info:encoder.encode("ZEN-TASKS|"+centralId+"|"+deviceId)},mat,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+  }
+  async function writeTaskOp(payload,device,manifest,secrets,senderId){
+    const eph=await crypto.subtle.generateKey({name:"ECDH",namedCurve:"P-256"},false,["deriveBits"]),salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+    const key=await taskOpKey(eph.privateKey,device.exchangePublicKey,salt,manifest.centralId,device.deviceId),cipher=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,encoder.encode(JSON.stringify(payload)));
+    const env={schemaVersion:1,centralId:manifest.centralId,operationId:crypto.randomUUID(),senderDeviceId:senderId,recipientDeviceId:device.deviceId,createdAt:new Date().toISOString(),ephemeralPublicKey:await crypto.subtle.exportKey("jwk",eph.publicKey),salt:b64(salt),iv:b64(iv),ciphertext:b64(new Uint8Array(cipher))};
+    env.signature=b64(new Uint8Array(await crypto.subtle.sign({name:"ECDSA",hash:"SHA-256"},secrets.signingPrivateKey,encoder.encode(JSON.stringify(env)))));
+    const ops=await directory.getDirectoryHandle("OPERACOES",{create:true}),from=await ops.getDirectoryHandle(senderId,{create:true}),to=await from.getDirectoryHandle(device.deviceId,{create:true});
+    await writeJson(to,env.operationId+".json",env);
+  }
+  function taskCache(){try{return JSON.parse(localStorage.getItem("zen_central_shared_tasks_v1")||'{"entries":{}}');}catch(_){return {entries:{}};}}
+  async function publishTasks(records){
+    const saved=await loadHandle();if(!saved||!saved.handle||!saved.deviceId)return;directory=saved.handle;
+    const secrets=await loadDeviceSecrets(saved.deviceId);if(!secrets||!secrets.signingPrivateKey)return;
+    const manifest=await readJson(await directory.getDirectoryHandle("CENTRAL"),"identificacao.json"),reg=await readJson(await directory.getDirectoryHandle("ADMIN"),"dispositivos.json"),user=current();
+    if(!user)return;const devices=(reg.devices||[]).filter(d=>d.status==="active"&&d.deviceId!==saved.deviceId&&d.exchangePublicKey),stateKey="zen_central_task_outbox_"+manifest.centralId+"_"+saved.deviceId;
+    let prev={};try{prev=JSON.parse(localStorage.getItem(stateKey)||"{}");}catch(_){}const next={};
+    for(const record of (records||[]).filter(r=>r&&r.id&&!r._sharedOwnerId&&Array.isArray(r.sharedWith)&&r.sharedWith.length)){
+      const targets=record.sharedWith.filter(x=>x&&x.userId).map(x=>x.userId);if(!targets.length)continue;
+      for(const device of devices){const k=record.id+"|"+device.deviceId,fp=await sha256(JSON.stringify({record,targets}));next[k]={recordId:record.id,deviceId:device.deviceId,fingerprint:fp};
+        if(!prev[k]||prev[k].fingerprint!==fp)await writeTaskOp({kind:"task.snapshot",recordId:record.id,ownerUserId:user.id,ownerName:user.name||user.username,targetUserIds:targets,record},device,manifest,secrets,saved.deviceId);
+      }
+    }
+    for(const k of Object.keys(prev)){if(next[k])continue;const old=prev[k],device=devices.find(d=>d.deviceId===old.deviceId);if(device)await writeTaskOp({kind:"task.revoke",recordId:old.recordId,ownerUserId:user.id,ownerName:user.name||user.username,targetUserIds:[]},device,manifest,secrets,saved.deviceId);}
+    localStorage.setItem(stateKey,JSON.stringify(next));
+  }
+  async function syncNow(){
+    const saved=await loadHandle();if(!saved||!saved.handle||!saved.deviceId)return {received:0};directory=saved.handle;
+    if(directory.queryPermission&&await directory.queryPermission({mode:"readwrite"})!=="granted")return {received:0,permissionRequired:true};
+    const manifest=await readJson(await directory.getDirectoryHandle("CENTRAL"),"identificacao.json"),secrets=await loadDeviceSecrets(saved.deviceId),reg=await readJson(await directory.getDirectoryHandle("ADMIN"),"dispositivos.json");
+    if(!secrets)return {received:0};const cache=taskCache();cache.entries=cache.entries||{};const pkey="zen_central_processed_"+saved.deviceId;let processed=[];try{processed=JSON.parse(localStorage.getItem(pkey)||"[]");}catch(_){}let received=0;
+    const ops=await directory.getDirectoryHandle("OPERACOES",{create:true});
+    for await(const [senderId,from] of ops.entries()){
+      if(from.kind!=="directory"||senderId===saved.deviceId)continue;const sender=(reg.devices||[]).find(d=>d.deviceId===senderId&&d.status==="active");if(!sender)continue;
+      let to;try{to=await from.getDirectoryHandle(saved.deviceId);}catch(_){continue;}
+      for await(const [filename,entry] of to.entries()){
+        if(entry.kind!=="file"||!filename.endsWith(".json"))continue;let env;try{env=await readJson(to,filename);}catch(_){continue;}
+        if(processed.includes(env.operationId)||env.centralId!==manifest.centralId||env.recipientDeviceId!==saved.deviceId)continue;
+        try{
+          const unsigned={...env};delete unsigned.signature;const pub=await crypto.subtle.importKey("jwk",sender.publicKey,{name:"ECDSA",namedCurve:"P-256"},false,["verify"]);
+          if(!await crypto.subtle.verify({name:"ECDSA",hash:"SHA-256"},pub,fromB64(env.signature),encoder.encode(JSON.stringify(unsigned))))continue;
+          const key=await taskOpKey(secrets.exchangePrivateKey,env.ephemeralPublicKey,fromB64(env.salt),manifest.centralId,saved.deviceId),plain=await crypto.subtle.decrypt({name:"AES-GCM",iv:fromB64(env.iv)},key,fromB64(env.ciphertext)),p=JSON.parse(decoder.decode(plain));
+          if(!p.recordId||!p.ownerUserId)continue;const ck=p.ownerUserId+"|"+p.recordId,old=cache.entries[ck];
+          if(!old||new Date(env.createdAt).getTime()>=new Date(old.updatedAt||0).getTime())cache.entries[ck]=p.kind==="task.snapshot"?{record:p.record,ownerUserId:p.ownerUserId,ownerName:p.ownerName,targetUserIds:p.targetUserIds,updatedAt:env.createdAt,deleted:false}:{ownerUserId:p.ownerUserId,targetUserIds:[],updatedAt:env.createdAt,deleted:true};
+          processed.push(env.operationId);received++;
+        }catch(e){console.warn("ZEN Central: operação inválida ignorada.",e);}
+      }
+    }
+    localStorage.setItem("zen_central_shared_tasks_v1",JSON.stringify(cache));localStorage.setItem(pkey,JSON.stringify(processed.slice(-5000)));
+    if(received)window.dispatchEvent(new CustomEvent("zen-central-updated",{detail:{received}}));return {received};
+  }
+  function getSharedTasks(userId){if(!userId)return [];return Object.values(taskCache().entries||{}).filter(x=>!x.deleted&&x.record&&Array.isArray(x.targetUserIds)&&x.targetUserIds.includes(userId)).map(x=>({...x.record,_sharedOwnerId:x.ownerUserId,_sharedOwnerName:x.ownerName||"Usuário",_sharedPermission:"view",_centralRemote:true}));}
+  function startBackgroundSync(){if(window.__ZEN_CENTRAL_SYNC_TIMER)return;const run=async()=>{try{await syncNow();}catch(e){console.warn("ZEN Central sync:",e);}};run();window.__ZEN_CENTRAL_SYNC_TIMER=setInterval(run,10000);}
+
   function renderStatus(message) {
     const el = document.getElementById("zen-central-status");
     if (el) el.textContent = message;
@@ -378,6 +448,7 @@
     if (!user) return;
     currentUser = user;
     mount();
+    startBackgroundSync();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
@@ -393,8 +464,11 @@
     activateBeforeLogin,
     checkActivation,
     publishUsers,
+    publishTasks,
+    syncNow,
+    getSharedTasks,
     createInvitation,
     reviewRequests,
-    getStatus: () => ({ connected: !!directory, stage: "device-auth-and-credential-bootstrap" })
+    getStatus: () => ({ connected: !!directory, stage: "encrypted-task-sharing-sync", intervalSeconds: 10 })
   };
 })();
