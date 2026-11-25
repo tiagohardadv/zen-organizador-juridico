@@ -676,7 +676,7 @@
     if (!header) return;
     const button = document.createElement("button");
     button.id = "zen-central-entry";
-    button.className = "btn btn-ghost";
+    button.className = "btn btn-ghost zen-central-trigger";
     button.textContent = "☁ Central ZEN";
     button.style.fontSize = ".8rem";
     button.onclick = openPanel;
@@ -687,14 +687,15 @@
     const admin = isAdmin();
     const modal = document.createElement("div");
     modal.id = "zen-central-modal";
-    modal.style.cssText = "position:fixed;inset:0;z-index:999990;background:rgba(15,23,42,.62);display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(4px)";
-    modal.innerHTML = '<section style="width:min(100%,620px);max-height:90vh;overflow:auto;background:var(--surface,#fff);color:var(--text,#0f172a);border:1px solid var(--border,#ddd);border-radius:14px;padding:22px;box-shadow:0 24px 70px rgba(0,0,0,.25)">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><h2 style="margin:0">Central de Informações ZEN</h2><button class="btn btn-ghost" id="zen-central-close">Fechar</button></div>' +
-      '<p style="color:var(--text-muted);font-size:.86rem;line-height:1.5">A Central ZEN sincroniza tarefas compartilhadas entre computadores autorizados e armazena backups criptografados por usuário. Lembretes e dados particulares não são sincronizados em tempo real; entram apenas nos backups protegidos por senha. A sincronização e os backups dependem do aplicativo aberto e da pasta do Google Drive disponível.</p>' +
-      '<div id="zen-central-status" role="status" style="padding:10px;background:var(--surface-subtle);border:1px solid var(--border);border-radius:8px;font-size:.82rem;margin:12px 0">Nenhuma central conectada nesta sessão.</div>' +
-      '<div style="border:1px solid var(--border);border-radius:9px;padding:12px;margin:12px 0"><strong style="font-size:.9rem">Backup automático na Central</strong><p id="zen-central-backup-status" style="font-size:.8rem;color:var(--text-muted);margin:7px 0">Verificando backups...</p><p id="zen-central-backup-warning" class="hidden" role="status" style="font-size:.78rem;color:var(--danger);margin:0 0 8px"></p><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn btn-primary" id="zen-central-backup-unlock">Ativar / desbloquear</button><button class="btn btn-ghost" id="zen-central-backup-now">Criar backup agora</button><button class="btn btn-ghost" id="zen-central-backup-restore">Restaurar backup</button></div><p style="font-size:.72rem;color:var(--text-muted);margin:8px 0 0">Cópias criptografadas por senha na pasta BACKUPS, separadas por conta e computador. Até 7 versões diárias por computador. A senha não é armazenada; é necessário desbloquear em cada sessão.</p></div>' +
-      (admin ? '<div style="display:grid;gap:9px"><button class="btn btn-primary" id="zen-central-setup">Criar / conectar central (administrador)</button><button class="btn btn-ghost" id="zen-central-invite">Gerar convite de dispositivo</button><button class="btn btn-ghost" id="zen-central-review">Analisar solicitações e autorizar dispositivo</button><button class="btn btn-ghost" id="zen-central-sync">Reconectar / sincronizar agora</button></div>' : '<div style="display:grid;gap:9px"><button class="btn btn-primary" id="zen-central-request">Conectar e solicitar ativação</button><button class="btn btn-ghost" id="zen-central-sync">Reconectar / sincronizar agora</button></div>') +
-      '<p style="font-size:.75rem;color:var(--text-muted);margin-top:14px">Acesso à pasta é concedido pelo Google Drive. Os controles internos do ZEN não impedem que alguém com permissão direta de edição altere arquivos manualmente. Não armazene dados reais nesta central experimental até concluir as etapas de segurança e sincronização.</p></section>';
+    modal.className = "zen-central-overlay";
+    modal.innerHTML = '<section class="zen-central-dialog" role="dialog" aria-modal="true" aria-labelledby="zen-central-title">' +
+      '<div class="zen-central-heading"><div><span class="zen-central-eyebrow">SINCRONIZAÇÃO E PROTEÇÃO DE DADOS</span><h2 id="zen-central-title">Central ZEN</h2></div><button class="btn btn-ghost" id="zen-central-close" type="button">Fechar</button></div>' +
+      '<p class="zen-central-intro">Gerencie a conexão entre computadores autorizados e os backups criptografados da sua conta.</p>' +
+      '<div id="zen-central-status" class="zen-central-status" role="status">Verificando conexão com a Central...</div>' +
+      '<div class="zen-central-backup-card"><div class="zen-central-section-heading"><div><h3>Backup automático</h3><p>Proteção individual da conta, armazenada na pasta compartilhada.</p></div><span class="zen-central-lock-icon">🔐</span></div><p id="zen-central-backup-status" class="zen-central-backup-status">Verificando backups...</p><p id="zen-central-backup-warning" class="hidden zen-central-warning" role="status"></p><div class="zen-central-button-row"><button class="btn btn-primary" id="zen-central-backup-unlock" type="button">Ativar / desbloquear</button><button class="btn btn-ghost" id="zen-central-backup-now" type="button">Criar backup agora</button><button class="btn btn-ghost" id="zen-central-backup-restore" type="button">Restaurar backup</button></div><p class="zen-central-help">Até 7 versões diárias por computador. A senha não é armazenada e precisa ser informada novamente em cada sessão.</p></div>' +
+      '<div class="zen-central-actions">' +
+      (admin ? '<button class="btn btn-primary" id="zen-central-setup" type="button">Criar / conectar central</button><button class="btn btn-ghost" id="zen-central-invite" type="button">Gerar convite de dispositivo</button><button class="btn btn-ghost" id="zen-central-review" type="button">Analisar solicitações e autorizar dispositivo</button><button class="btn btn-ghost" id="zen-central-sync" type="button">Reconectar / sincronizar agora</button>' : '<button class="btn btn-primary" id="zen-central-request" type="button">Conectar e solicitar ativação</button><button class="btn btn-ghost" id="zen-central-sync" type="button">Reconectar / sincronizar agora</button>') +
+      '</div><p class="zen-central-footnote">O acesso aos arquivos também depende das permissões concedidas no Google Drive. Restrinja a pasta central a pessoas e computadores confiáveis.</p></section>';
     document.body.appendChild(modal);
     const close = () => modal.remove();
     modal.querySelector("#zen-central-close").onclick = close;
